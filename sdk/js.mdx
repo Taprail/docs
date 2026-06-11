@@ -1,6 +1,6 @@
 ---
 title: "JS SDK"
-description: "@taprail/checkout is a ~1.6 KB drop-in checkout with React bindings."
+description: "@taprail/checkout is a ~1.8 KB drop-in checkout with React bindings."
 ---
 
 ```bash
@@ -24,11 +24,20 @@ const result = await open(intent, {
 // result:
 // { status: "approved" | "declined" | "expired" | "cancelled" | "refunded" | "closed",
 //   order_id: "...",
-//   transaction_reference: "tprm_..." | null }
+//   transaction_reference: "tprm_..." | null,
+//   return_url: "https://yourstore.com/..." | null }
 ```
 
 `open` accepts the **intent object**, a bare **order id**, or a **deep link URL**, whichever
 is handy.
+
+If you've configured a [browser return URL](/checkout-flows#browser-return-url) and would
+rather not handle the result yourself, pass `redirect: true` and the SDK navigates there
+after a terminal status, appending `?order=<id>&status=<status>`:
+
+```javascript
+await open(intent, { redirect: true });
+```
 
 What happens per device:
 

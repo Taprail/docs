@@ -3,7 +3,12 @@ title: "Changelog"
 description: "Every observable change to the API, newest first."
 ---
 
-<Update label="June 2026" description="Rate limits, granular errors, return URL">
+<Update label="June 2026" description="Rate limits, granular errors, return URL, SDK 0.2.0">
+
+**JS SDK 0.2.0.** `CheckoutResult` gained `return_url`, and `open()` gained an opt-in
+`redirect` option that sends the browser to your configured return URL after a terminal
+status. The modal now verifies the origin of embed messages, locks background scroll,
+and manages focus properly. Transient polling errors no longer spam `onError`.
 
 **Rate limiting on the merchant API.** Each merchant is limited to **300 requests per
 minute** across all `/v1/merchant/*` endpoints. Exceeding it returns
