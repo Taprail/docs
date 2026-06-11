@@ -31,17 +31,17 @@
             "pages": ["webhooks/overview", "webhooks/verify-signatures"]
           },
           {
-            "group": "Concepts",
-            "pages": ["payouts", "idempotency", "security", "rate-limits"]
-          },
-          {
             "group": "Guides",
             "pages": [
               "guides/nextjs-checkout",
-              "guides/reliable-webhooks",
               "guides/pos-qr",
+              "guides/reliable-webhooks",
               "guides/testing"
             ]
+          },
+          {
+            "group": "Concepts",
+            "pages": ["payouts", "idempotency", "security", "rate-limits"]
           },
           {
             "group": "Loyalty",

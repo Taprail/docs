@@ -83,3 +83,6 @@ The first check has a cheap implementation: a periodic job that lists your recen
 orders and asks [`GET /v1/merchant/orders/:id/status`](/api-reference/get-order-status) for
 each. It doubles as your recovery path if webhooks are ever down for longer than the retry
 window.
+
+Once your handler holds up, put it through the full
+[testing matrix](/guides/testing) before going live.
