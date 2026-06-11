@@ -31,6 +31,10 @@
             "pages": ["webhooks/overview", "webhooks/verify-signatures"]
           },
           {
+            "group": "Concepts",
+            "pages": ["payouts", "idempotency", "security", "rate-limits"]
+          },
+          {
             "group": "Guides",
             "pages": [
               "guides/nextjs-checkout",
@@ -40,8 +44,12 @@
             ]
           },
           {
+            "group": "Loyalty",
+            "pages": ["loyalty/overview", "loyalty/programs"]
+          },
+          {
             "group": "Reference",
-            "pages": ["errors"]
+            "pages": ["errors", "versioning", "changelog"]
           }
         ]
       },

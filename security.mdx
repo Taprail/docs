@@ -1,0 +1,51 @@
+---
+title: "Security"
+description: "Key handling, what we expose, and what to do when something leaks."
+---
+
+## API keys
+
+Your `tr_…` key is a bearer secret: anyone holding it can create orders and issue refunds
+as you. Handle it like a password.
+
+- Keep keys in your secret manager or environment variables, never in source control,
+  client-side code, or mobile apps. The checkout itself needs no key; the order id is the
+  capability.
+- We store only a SHA-256 hash. The full key is shown once at mint time and cannot be
+  recovered, only replaced.
+- Use separate keys per system (web backend, till software, CI) so one leak doesn't mean
+  rotating everything.
+
+**If a key leaks:** go to **Payments → API Keys** in the dashboard. **Revoke** kills the key
+immediately; **Rotate** mints a replacement and gives existing keys a 24-hour grace window
+so you can deploy without downtime. If you suspect live transactions you didn't make,
+contact support as well.
+
+## Webhook secrets
+
+Signing secrets (`whsec_test_…`, `whsec_live_…`) are per environment, so a leaked sandbox
+secret can't forge live events. Regenerating from the dashboard replaces both; the old
+secrets stop verifying at once, so update your servers in the same deploy. And
+[verify every delivery](/webhooks/verify-signatures): constant-time compare, raw body,
+timestamp tolerance.
+
+## What we expose, and what we don't
+
+- The [public order endpoint](/api-reference/public-order) is unauthenticated by design.
+  It returns display-safe fields only: business name, amount, status. Never the customer's
+  phone, email, or cart.
+- Order ids are random UUIDs. They're capabilities for viewing checkout state, so don't
+  log them in public places or put them in URLs you share.
+- Card details never touch your systems or ours in plaintext; charges run inside the
+  customer's Taprail app against their stored payment methods.
+
+## Transport
+
+Everything is HTTPS. Webhook endpoints, callback URLs, and return URLs must all be
+`https://`; the API rejects anything else at configuration time.
+
+## Reporting a vulnerability
+
+Email **security@taprail.app** with details and a way to reproduce. Don't test against
+live merchants or real customer data; sandbox gives you a full environment for proofs of
+concept. We acknowledge reports quickly and keep you informed through the fix.

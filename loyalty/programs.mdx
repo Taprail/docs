@@ -1,0 +1,60 @@
+---
+title: "Programs"
+description: "Create, tune, pause, and budget your cashback rules."
+---
+
+A program is one cashback rule. Most partners run a single always-on program; promotions
+come and go alongside it as separate programs you pause and resume.
+
+## Creating a program
+
+In the dashboard, go to **Programs → New program** and set four things:
+
+1. **Name.** Customers see it with their reward ("Weekend Double Rewards"), so name it like
+   a promotion, not a database row.
+2. **Cashback %.** The reward rate. 2 to 5% is typical for an always-on program; promotions
+   go higher for a limited budget.
+3. **Cap per tap.** The most one transaction can earn. A 5% rate with a ₦500 cap means a
+   ₦100,000 tap earns ₦500, not ₦5,000. Always set a cap you can live with.
+4. **Budget** (optional). A total spend limit. When the program has rewarded this much in
+   total, it stops matching new taps until you raise the budget or it's left as a finished
+   promotion. Leave blank for unlimited.
+
+The program starts rewarding eligible taps the moment it's created.
+
+## How a tap earns
+
+```text
+reward = min(amount × cashback %, cap per tap)
+```
+
+A ₦8,000 tap on a 5% program with a ₦500 cap earns ₦400. A ₦15,000 tap earns ₦500, capped.
+Each transaction is rewarded at most once, even if our systems see it twice.
+
+## Editing and pausing
+
+Everything is editable after creation: name, rate, cap, budget. Edits apply to future taps
+only; rewards already earned are untouched. Pausing stops new rewards instantly and can be
+reversed any time, which makes pause/resume the right tool for weekend-only or
+payday-window promotions.
+
+## Reading the numbers
+
+- **Overview** shows the trend: cashback rewarded and rewarded taps, day by day, plus
+  members and outstanding balances.
+- **Rewards** is the ledger: every rewarded transaction with its program, amount, and
+  reward. This is what you reconcile a budget against.
+
+## Which transactions match
+
+Matching is configured with you during onboarding, by your business name and merchant
+category as they appear on card transactions. If a store or terminal of yours isn't
+earning, or something is matching that shouldn't, contact your account manager; matching
+rules aren't self-serve yet.
+
+<Note>
+  Multiple active programs: when more than one program could match a tap, the most recently
+  created one wins. So launching a promotion alongside your always-on program works
+  naturally: the newer promotion takes over while it's active, and pausing or exhausting it
+  hands matching back to the older program.
+</Note>

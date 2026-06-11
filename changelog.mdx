@@ -1,0 +1,32 @@
+---
+title: "Changelog"
+description: "Every observable change to the API, newest first."
+---
+
+<Update label="June 2026" description="Rate limits, granular errors, return URL">
+
+**Rate limiting on the merchant API.** Each merchant is limited to **300 requests per
+minute** across all `/v1/merchant/*` endpoints. Exceeding it returns
+`429 too_many_requests`. See [rate limits](/rate-limits).
+
+**Granular error codes.** Expected failures now return specific, stable codes instead of
+status-level ones: `invalid_api_key`, `live_mode_disabled`, `duplicate_reference`,
+`amount_invalid`, `order_not_refundable`, and friends. Validation errors gained a `param`
+field naming the offending field. Coarse codes (`bad_request`, `conflict`) still appear on
+generic failures, so existing clients keep working. The maintenance pause now correctly
+returns `503 unavailable_maintenance` (previously `400`).
+
+**Browser return URL.** Merchants can configure a return URL in the dashboard; the hosted
+checkout sends the customer back to it with `order` and `status` query params once the
+order goes terminal. The public order view gained a `return_url` field.
+
+</Update>
+
+<Update label="May 2026" description="Initial release">
+
+**Pay with Taprail merchant API.** Order creation with idempotency keys, order reads and
+lean status polling, fulfilment timeline updates, refunds, and cancellation. Signed
+`order.*` webhooks with automatic retries and dashboard redelivery. Sandbox environment
+with deterministic test amounts. JS SDK (`@taprail/checkout`) with React bindings.
+
+</Update>

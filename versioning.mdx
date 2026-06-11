@@ -1,0 +1,44 @@
+---
+title: "Versioning & stability"
+description: "What we promise to never break, and how changes are announced."
+---
+
+The API is versioned in the path: everything documented here lives under `/v1/`. There is
+no plan for a `/v2/`; the promises below exist so we never need one casually.
+
+## What will not break
+
+Within `/v1/`, these are stable:
+
+- **Existing response fields.** A field never disappears, changes type, or changes meaning.
+- **Error codes.** The `error` values are append-only. We add new codes; we never remove or
+  repurpose one. Handle unknown codes by falling back on the HTTP status class.
+- **Order and payout states.** Existing `status` and `payout_state` values keep their
+  meaning. The set of terminal statuses only ever grows.
+- **Webhook payloads and signing.** Existing event fields and the `t=…,v1=…` HMAC-SHA256
+  scheme stay as they are.
+- **Request validation.** A request that is valid today stays valid. We don't tighten
+  validation on existing fields.
+
+## What can change without notice
+
+Build your client to tolerate these:
+
+- **New fields** in responses and webhook payloads. Parse leniently; ignore what you don't
+  recognize.
+- **New error codes**, new webhook event types, and new endpoints.
+- **`message` wording.** Error messages are for humans. Branch on `error`, never on
+  `message`.
+- **Internal formats** of opaque values: ids, references, key prefixes beyond the
+  documented `tr_test_` / `tr_live_` shapes.
+
+## If a breaking change is ever unavoidable
+
+We'll announce it in the [changelog](/changelog) and email every affected merchant at least
+**90 days** before it takes effect, with a migration path. Security fixes are the one
+exception where the timeline may compress; we'll still contact you directly.
+
+## How to stay informed
+
+The [changelog](/changelog) records every observable API change, additive ones included.
+Significant changes are also announced by email to your dashboard account address.

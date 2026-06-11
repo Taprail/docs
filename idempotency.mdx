@@ -1,0 +1,59 @@
+---
+title: "Idempotency"
+description: "Retry order creation safely, without ever double-charging."
+---
+
+Networks fail at the worst moment: after your create request reached us, but before the
+response reached you. Without protection, retrying creates a second order. The
+`Idempotency-Key` header is that protection, and it's required on
+[Create order](/api-reference/create-order).
+
+## How it works
+
+The first time we see a key, we process the request and store the response against
+`(your merchant, key)`. Any later request with the same key returns that stored response
+verbatim, with the same order id. Nothing is re-executed.
+
+```bash
+# First call: creates the order
+curl -X POST .../v1/merchant/orders -H "Idempotency-Key: cart-8812" -d '{...}'
+# → { "id": "550e...", "status": "created", ... }
+
+# Timeout? Crash? Send it again, unchanged:
+curl -X POST .../v1/merchant/orders -H "Idempotency-Key: cart-8812" -d '{...}'
+# → the exact same response, same order id, no second order
+```
+
+## Choosing a key
+
+Derive the key from the thing that must be paid once, not from the attempt:
+
+| Source | Example | Verdict |
+|---|---|---|
+| Cart or receipt id | `cart-8812`, `till-3-receipt-88412` | Good. Retries and double-clicks collapse into one order |
+| Random UUID per attempt | `b3f1…` fresh each call | Defeats the purpose: every retry creates a new order |
+| Constant | `checkout` | Broken: every customer gets the first customer's order back |
+
+## The replay is verbatim
+
+Two things follow from "we return the stored response":
+
+1. **A replay doesn't validate the new body.** If you send the same key with a different
+   amount, you get the original order back, original amount included. We don't currently
+   reject mismatched bodies, so never reuse a key for a different purchase. Derive keys
+   from the order identity and this can't happen.
+2. **A replay doesn't tell you the current status.** The stored response says `created`
+   even if the customer has since paid. Use
+   [Get order status](/api-reference/get-order-status) for current state.
+
+## Retention
+
+Keys are honored indefinitely today. Treat 24 hours as the guaranteed minimum when we
+eventually introduce cleanup; any change will be announced in the
+[changelog](/changelog) first.
+
+## Other endpoints
+
+Reads are naturally idempotent. Refund and cancel don't take a key, but both are guarded by
+state: a second refund of the same order fails with `order_not_refundable` because the
+order is already `refunded`, so the money can't move twice.

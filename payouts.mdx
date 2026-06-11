@@ -1,0 +1,70 @@
+---
+title: "Payouts & settlement"
+description: "When you get your money, how the net is calculated, and how to reconcile."
+---
+
+When a customer pays, the full amount lands with Taprail's processor. Your **net** is the
+amount minus the Taprail fee, and we transfer it to your payout account per order, usually
+within a minute or two of approval.
+
+```text
+customer pays  ₦7,500.00   (amount_kobo = 750000)
+Taprail fee   −₦75.00      (fee_kobo, locked at order creation)
+your payout    ₦7,425.00   (one bank transfer per order)
+```
+
+## The payout lifecycle
+
+Each order carries a `payout_state` you can read on
+[Get order](/api-reference/get-order):
+
+| `payout_state` | Meaning |
+|---|---|
+| `none` | The order hasn't been paid yet |
+| `pending` | Paid; the transfer to your account is queued |
+| `transferred` | Your net has been sent to your payout account |
+| `failed` | The transfer was attempted and failed. Contact support |
+
+A worker sweeps pending payouts about once a minute, so `pending` normally lasts seconds.
+
+Two cases worth knowing:
+
+- **No payout account configured.** Orders stay `pending` until you add and verify a bank
+  account under **Payments → Settings**. Nothing is lost; transfers resume automatically
+  once the account is in place.
+- **Zero net.** If the fee consumes the full amount (tiny orders), the order is marked
+  `transferred` with nothing to send.
+
+In sandbox, payouts are marked `transferred` immediately and no money moves.
+
+## Reconciling your bank statement
+
+Every live payout is a separate bank transfer with a predictable reference:
+
+```text
+payout_<order_id>
+```
+
+So a statement line maps to exactly one order, and from the order you have your own
+`merchant_reference`. For the charge side, `transaction_reference` on the order is the
+processor's charge reference.
+
+A simple daily reconciliation:
+
+1. List yesterday's `approved` orders from your own database.
+2. For each, confirm `payout_state` is `transferred` via the API.
+3. Match `payout_<order_id>` references against your bank statement.
+4. Anything `failed`, or `pending` for more than an hour, goes to a human.
+
+## Refunds and your balance
+
+Refunds return the **full amount** to the customer, while the fee was already taken at
+charge time. The refund is recovered from your settled funds. Practically: a refunded
+₦7,500 order costs you the ₦7,425 you received plus the ₦75 fee you never received.
+
+## Fees
+
+Your fee is a percentage with a cap, both visible under **Payments → Settings** in the
+dashboard. The fee is computed once, at order creation, so the `fee_kobo` you see in the
+create response is exactly what settlement uses. Changing your fee schedule later never
+reprices existing orders.

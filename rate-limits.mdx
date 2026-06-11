@@ -1,0 +1,43 @@
+---
+title: "Rate limits"
+description: "300 requests per minute per merchant, counted across all endpoints."
+---
+
+Each merchant gets **300 requests per minute** across all `/v1/merchant/*` endpoints
+combined, in both environments. The window is a fixed minute; the counter resets on the
+minute boundary.
+
+Exceeding it returns:
+
+```json
+{
+  "error": "too_many_requests",
+  "message": "Rate limit exceeded (300 requests per minute). Back off and retry."
+}
+```
+
+with HTTP status `429`.
+
+## Staying under it
+
+300 per minute is generous for transactional traffic: that's five orders per second
+sustained. Integrations that hit it are almost always polling too hard.
+
+- **Prefer webhooks to polling.** One webhook replaces an entire polling loop.
+- If you must poll, poll [Get order status](/api-reference/get-order-status) every 2 to 3
+  seconds for the order you're waiting on, not every order you've ever created.
+- Batch reconciliation jobs: spread them over minutes rather than firing thousands of reads
+  at once, and use your own database as the primary source.
+
+## Handling 429
+
+Back off exponentially with jitter and retry. For order creation, keep the same
+`Idempotency-Key` on the retry; see [idempotency](/idempotency).
+
+The public checkout endpoint (`/v1/checkout/orders/:id`) is not counted against your
+merchant limit; it's what the SDK polls from customers' browsers.
+
+<Note>
+  Need more headroom for a legitimate use case? Contact support with your expected volume
+  and we'll raise your limit.
+</Note>

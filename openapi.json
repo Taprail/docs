@@ -1,0 +1,475 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Pay with Taprail",
+    "version": "1.0.0",
+    "description": "Merchant API for accepting payments inside the Taprail app. Amounts are integers in kobo (1 NGN = 100 kobo). The only supported currency is NGN."
+  },
+  "servers": [{ "url": "https://api.taprail.app" }],
+  "security": [{ "apiKey": [] }],
+  "components": {
+    "securitySchemes": {
+      "apiKey": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Your secret API key: tr_test_… (sandbox) or tr_live_… (live). The key decides the environment."
+      }
+    },
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "required": ["error", "message"],
+        "properties": {
+          "error": {
+            "type": "string",
+            "description": "Stable machine-readable code. Branch on this, never on message."
+          },
+          "message": {
+            "type": "string",
+            "description": "Human-readable detail. Wording may change; don't parse it."
+          },
+          "param": {
+            "type": "string",
+            "description": "Present on validation errors: the request field or header that failed."
+          }
+        }
+      },
+      "OrderItem": {
+        "type": "object",
+        "required": ["name", "quantity", "price_kobo"],
+        "properties": {
+          "name": { "type": "string", "description": "Item display name." },
+          "quantity": { "type": "integer", "description": "Quantity." },
+          "price_kobo": { "type": "integer", "description": "Unit price in kobo." },
+          "image_url": { "type": "string", "description": "Optional image URL." }
+        }
+      },
+      "OrderStatus": {
+        "type": "string",
+        "enum": ["created", "awaiting_user", "approved", "declined", "expired", "cancelled", "refunded"],
+        "description": "approved, declined, expired, cancelled and refunded are terminal."
+      },
+      "PayoutState": {
+        "type": "string",
+        "enum": ["none", "pending", "transferred", "failed"],
+        "description": "Settlement of your net (amount minus fee) to your payout account."
+      },
+      "Order": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "merchant_reference": { "type": "string", "description": "Your reference from creation." },
+          "amount_kobo": { "type": "integer", "description": "Amount the customer pays, in kobo." },
+          "fee_kobo": { "type": "integer", "description": "Taprail's fee, locked at creation." },
+          "currency": { "type": "string", "enum": ["NGN"] },
+          "items": { "type": "array", "items": { "$ref": "#/components/schemas/OrderItem" } },
+          "env": { "type": "string", "enum": ["test", "live"] },
+          "status": { "$ref": "#/components/schemas/OrderStatus" },
+          "payout_state": { "$ref": "#/components/schemas/PayoutState" },
+          "decline_reason": {
+            "type": ["string", "null"],
+            "description": "Why a declined order declined, e.g. user_declined or sandbox_declined."
+          },
+          "transaction_reference": {
+            "type": ["string", "null"],
+            "description": "Processor charge reference once approved."
+          },
+          "customer_phone": { "type": ["string", "null"] },
+          "expires_at": { "type": "string", "format": "date-time" },
+          "approved_at": { "type": ["string", "null"], "format": "date-time" },
+          "created_at": { "type": "string", "format": "date-time" }
+        }
+      }
+    },
+    "responses": {
+      "Unauthorized": {
+        "description": "Missing, malformed, unknown, or revoked API key.",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/Error" },
+            "example": { "error": "invalid_api_key", "message": "Provide a valid API key as `Authorization: Bearer tr_test_…` or `tr_live_…`." }
+          }
+        }
+      },
+      "NotFound": {
+        "description": "The order doesn't exist, or belongs to another merchant or the other environment.",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/Error" },
+            "example": { "error": "not_found", "message": "" }
+          }
+        }
+      },
+      "TooManyRequests": {
+        "description": "Rate limit exceeded: 300 requests per minute per merchant.",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/Error" },
+            "example": { "error": "too_many_requests", "message": "Rate limit exceeded (300 requests per minute). Back off and retry." }
+          }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/v1/merchant/orders": {
+      "post": {
+        "operationId": "createOrder",
+        "summary": "Create order",
+        "description": "Creates an order your customer can pay. The response carries the deep_link / qr_payload you hand to the checkout, and the fee Taprail will take. Always send an Idempotency-Key: retrying with the same key returns the original response verbatim, never a duplicate order.",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "Unique key for this creation attempt, scoped to your merchant. Tie it to your cart or receipt id."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["reference", "amount_kobo"],
+                "properties": {
+                  "reference": {
+                    "type": "string",
+                    "description": "Your own order reference (cart id, invoice number). Unique per merchant per environment; a duplicate returns 409 duplicate_reference."
+                  },
+                  "amount_kobo": {
+                    "type": "integer",
+                    "description": "Amount the customer pays, in kobo. Must be positive. In sandbox the last two digits pick the outcome: 11 declines, 22 simulates a processor timeout, anything else approves."
+                  },
+                  "currency": { "type": "string", "default": "NGN", "enum": ["NGN"] },
+                  "items": {
+                    "type": "array",
+                    "items": { "$ref": "#/components/schemas/OrderItem" },
+                    "description": "Cart contents, shown to the customer in the app."
+                  },
+                  "customer_phone": { "type": "string", "description": "For your records and receipt matching." },
+                  "customer_email": { "type": "string", "description": "For your records." },
+                  "callback_url": {
+                    "type": "string",
+                    "description": "Per-order webhook destination override (https only). Falls back to your dashboard-configured endpoint."
+                  }
+                }
+              },
+              "example": {
+                "reference": "order-1234",
+                "amount_kobo": 750000,
+                "items": [{ "name": "Leather tote", "quantity": 1, "price_kobo": 750000 }],
+                "customer_email": "ada@example.com"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Order created.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": { "type": "string", "format": "uuid" },
+                    "status": { "type": "string", "enum": ["created"] },
+                    "deep_link": { "type": "string", "description": "Opens the Taprail app on mobile." },
+                    "qr_payload": { "type": "string", "description": "Same URL. Render as a QR for desktop or point-of-sale." },
+                    "amount_kobo": { "type": "integer" },
+                    "fee_kobo": { "type": "integer", "description": "Your net is amount_kobo - fee_kobo." },
+                    "expires_at": { "type": "string", "format": "date-time", "description": "Unpaid orders expire 30 minutes after creation." }
+                  }
+                },
+                "example": {
+                  "id": "550e8400-e29b-41d4-a716-446655440000",
+                  "status": "created",
+                  "deep_link": "https://pay.taprail.app/pay?o=550e8400-e29b-41d4-a716-446655440000",
+                  "qr_payload": "https://pay.taprail.app/pay?o=550e8400-e29b-41d4-a716-446655440000",
+                  "amount_kobo": 750000,
+                  "fee_kobo": 7500,
+                  "expires_at": "2026-06-11T15:30:00Z"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed. The error code names the problem and param names the field: idempotency_key_required, amount_invalid, currency_unsupported, callback_url_invalid, reference_required.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" },
+                "example": { "error": "amount_invalid", "message": "amount_kobo must be a positive integer (kobo)", "param": "amount_kobo" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "409": {
+            "description": "An order with this reference already exists in this environment. Fetch it instead of retrying.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" },
+                "example": { "error": "duplicate_reference", "message": "an order with this reference already exists", "param": "reference" }
+              }
+            }
+          },
+          "429": { "$ref": "#/components/responses/TooManyRequests" },
+          "503": {
+            "description": "The merchant API is briefly paused for maintenance. Retry with backoff.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" },
+                "example": { "error": "unavailable_maintenance", "message": "the Pay-with-Taprail merchant API is temporarily unavailable" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/merchant/orders/{id}": {
+      "get": {
+        "operationId": "getOrder",
+        "summary": "Get order",
+        "description": "Returns everything about one of your orders. Scoped to your merchant and the key's environment; a sandbox key can't read live orders.",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "The order.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Order" },
+                "example": {
+                  "id": "550e8400-e29b-41d4-a716-446655440000",
+                  "merchant_reference": "order-1234",
+                  "amount_kobo": 750000,
+                  "fee_kobo": 7500,
+                  "currency": "NGN",
+                  "items": [{ "name": "Leather tote", "quantity": 1, "price_kobo": 750000 }],
+                  "env": "test",
+                  "status": "approved",
+                  "payout_state": "pending",
+                  "decline_reason": null,
+                  "transaction_reference": "tprm_550e8400-e29b-41d4-a716-446655440000",
+                  "customer_phone": null,
+                  "expires_at": "2026-06-11T15:30:00Z",
+                  "approved_at": "2026-06-11T14:35:00Z",
+                  "created_at": "2026-06-11T14:05:00Z"
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "429": { "$ref": "#/components/responses/TooManyRequests" }
+        }
+      }
+    },
+    "/v1/merchant/orders/{id}/status": {
+      "get": {
+        "operationId": "getOrderStatus",
+        "summary": "Get order status",
+        "description": "A minimal status-only response, built for server-side polling loops. Prefer webhooks where you can; they arrive within seconds and carry the full event payload.",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current status.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": { "type": "string", "format": "uuid" },
+                    "status": { "$ref": "#/components/schemas/OrderStatus" },
+                    "transaction_reference": { "type": ["string", "null"], "description": "Null until approved." }
+                  }
+                },
+                "example": {
+                  "id": "550e8400-e29b-41d4-a716-446655440000",
+                  "status": "approved",
+                  "transaction_reference": "tprm_550e8400-e29b-41d4-a716-446655440000"
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "429": { "$ref": "#/components/responses/TooManyRequests" }
+        }
+      },
+      "post": {
+        "operationId": "pushFulfilment",
+        "summary": "Push fulfilment update",
+        "description": "Adds a fulfilment event (shipped, delivered, or a free-form note) to the customer's order timeline in the Taprail app. Does not change the payment status. If the customer is in the app, their order screen updates in realtime.",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["status"],
+                "properties": {
+                  "status": { "type": "string", "enum": ["shipped", "delivered", "note"] },
+                  "tracking_no": { "type": "string", "description": "Shown with shipped and delivered." },
+                  "eta": { "type": "string", "description": "Expected arrival, free-form." },
+                  "message": { "type": "string", "description": "A line for the timeline." }
+                }
+              },
+              "example": {
+                "status": "shipped",
+                "tracking_no": "TRK123456",
+                "eta": "2026-06-15",
+                "message": "Your order left our Lagos warehouse."
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Recorded.",
+            "content": { "application/json": { "example": { "ok": true } } }
+          },
+          "400": {
+            "description": "Invalid status.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" },
+                "example": { "error": "fulfilment_status_invalid", "message": "status must be shipped|delivered|note", "param": "status" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "429": { "$ref": "#/components/responses/TooManyRequests" }
+        }
+      }
+    },
+    "/v1/merchant/orders/{id}/refund": {
+      "post": {
+        "operationId": "refundOrder",
+        "summary": "Refund order",
+        "description": "Refunds an approved order. The customer gets back the full amount they paid; the Taprail fee is non-refundable, so the refund cost comes out of your settled funds. Moves the order to refunded (terminal) and delivers an order.refunded webhook.",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Refunded.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "status": "refunded",
+                  "refund_reference": "sandbox_refund_550e8400-e29b-41d4-a716-446655440000"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Only approved orders can be refunded.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" },
+                "example": { "error": "order_not_refundable", "message": "only approved orders can be refunded" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "429": { "$ref": "#/components/responses/TooManyRequests" },
+          "502": {
+            "description": "The payment processor failed mid-call. Safe to retry.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" },
+                "example": { "error": "upstream_error", "message": "refund failed: ..." }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/merchant/orders/{id}/cancel": {
+      "post": {
+        "operationId": "cancelOrder",
+        "summary": "Cancel order",
+        "description": "Voids an unpaid order (status created or awaiting_user) so it can no longer be paid. Paid, declined, expired, or refunded orders can't be cancelled; refund an approved order instead. Unpaid orders also expire on their own after 30 minutes.",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Cancelled.",
+            "content": { "application/json": { "example": { "status": "cancelled" } } }
+          },
+          "400": {
+            "description": "The order is past the point of cancelling.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" },
+                "example": { "error": "order_not_cancellable", "message": "order can no longer be cancelled" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "429": { "$ref": "#/components/responses/TooManyRequests" }
+        }
+      }
+    },
+    "/v1/checkout/orders/{id}": {
+      "get": {
+        "operationId": "getPublicOrder",
+        "summary": "Get order (public)",
+        "security": [],
+        "description": "Unauthenticated, display-safe order view used by the hosted checkout and the JS SDK's polling. The unguessable order UUID is the capability. Never exposes customer details or the cart. Don't fulfil from this endpoint; confirm via the signed webhook or the authenticated Get order call.",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Display-safe order view.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": { "type": "string", "format": "uuid" },
+                    "merchant_name": { "type": "string" },
+                    "amount_kobo": { "type": "integer" },
+                    "currency": { "type": "string", "enum": ["NGN"] },
+                    "status": { "$ref": "#/components/schemas/OrderStatus" },
+                    "expires_at": { "type": "string", "format": "date-time" },
+                    "deep_link": { "type": "string" },
+                    "return_url": {
+                      "type": ["string", "null"],
+                      "description": "Your configured browser return URL; the checkout redirects here on a terminal status."
+                    },
+                    "transaction_reference": { "type": ["string", "null"] }
+                  }
+                },
+                "example": {
+                  "id": "550e8400-e29b-41d4-a716-446655440000",
+                  "merchant_name": "Acme Stores",
+                  "amount_kobo": 750000,
+                  "currency": "NGN",
+                  "status": "created",
+                  "expires_at": "2026-06-11T15:30:00Z",
+                  "deep_link": "https://pay.taprail.app/pay?o=550e8400-e29b-41d4-a716-446655440000",
+                  "return_url": "https://acmestores.com/checkout/complete",
+                  "transaction_reference": null
+                }
+              }
+            }
+          },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    }
+  }
+}
