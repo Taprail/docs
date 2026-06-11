@@ -40,7 +40,7 @@ curl -X POST https://api.taprail.app/v1/merchant/orders/550e8400-.../refund \
 ```
 ```json 400 — not refundable
 {
-  "error": "bad_request",
+  "error": "order_not_refundable",
   "message": "only approved orders can be refunded"
 }
 ```

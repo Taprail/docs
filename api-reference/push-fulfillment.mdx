@@ -48,8 +48,9 @@ curl -X POST https://api.taprail.app/v1/merchant/orders/550e8400-.../status \
 ```
 ```json 400
 {
-  "error": "bad_request",
-  "message": "status must be shipped|delivered|note"
+  "error": "fulfilment_status_invalid",
+  "message": "status must be shipped|delivered|note",
+  "param": "status"
 }
 ```
 </ResponseExample>

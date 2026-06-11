@@ -39,7 +39,15 @@ Keys are minted from the [partner dashboard](https://partner.taprail.app) under
 
 ## Auth failures
 
-| Status | Meaning |
-|---|---|
-| `401 unauthorized` | Missing/malformed `Authorization` header, unknown key, or revoked key |
-| `403 forbidden` | Your account is suspended, or you used a `tr_live_` key before live mode was enabled |
+| Status | `error` | Meaning |
+|---|---|---|
+| 401 | `invalid_api_key` | Missing/malformed `Authorization` header, unknown key, or revoked key |
+| 403 | `merchant_suspended` | Your merchant account is suspended — contact support |
+| 403 | `live_mode_disabled` | You used a `tr_live_` key before live mode was enabled for your account |
+
+```json
+{
+  "error": "live_mode_disabled",
+  "message": "Live mode isn't enabled for this account yet. Use a tr_test_ key, or complete the go-live checklist."
+}
+```

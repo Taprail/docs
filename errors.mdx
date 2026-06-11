@@ -1,40 +1,97 @@
 ---
 title: "Errors"
-description: "Every error is JSON with a stable machine-readable code."
+description: "Stable machine-readable codes, field pointers, and request ids."
 ---
+
+Every error is JSON with the same shape:
 
 ```json
 {
-  "error": "bad_request",
-  "message": "amount_kobo must be positive"
+  "error": "amount_invalid",
+  "message": "amount_kobo must be a positive integer (kobo)",
+  "param": "amount_kobo"
 }
 ```
 
-<ResponseField name="error" type="string">
-  Stable, machine-readable code — branch on this.
+<ResponseField name="error" type="string" required>
+  Stable, machine-readable code — **branch on this**, never on `message`.
 </ResponseField>
-<ResponseField name="message" type="string">
-  Human-readable detail. May change over time; don't parse it.
+<ResponseField name="message" type="string" required>
+  Human-readable detail for logs and debugging. Wording may change over time.
+</ResponseField>
+<ResponseField name="param" type="string">
+  Present on validation errors — the request field (or header) that failed.
 </ResponseField>
 
-## Status codes
+<Tip>
+  Every response — success or error — carries an **`X-Request-Id`** header. Log it; quoting it
+  to support lets us trace the exact request through our systems.
+</Tip>
 
-| Status | `error` | When |
+## Error catalog
+
+### Authentication
+
+| Status | `error` | Meaning | What to do |
+|---|---|---|---|
+| 401 | `invalid_api_key` | Missing/malformed `Authorization` header, unknown key, or revoked key | Send `Authorization: Bearer tr_test_…` with a current key; mint a new one if revoked |
+| 403 | `merchant_suspended` | Your merchant account is suspended | Contact support |
+| 403 | `live_mode_disabled` | A `tr_live_` key was used before live mode was enabled | Use a `tr_test_` key, or finish the [go-live checklist](/environments#going-live) |
+
+### Create order
+
+| Status | `error` | `param` | Meaning |
+|---|---|---|---|
+| 400 | `idempotency_key_required` | `Idempotency-Key` | The header is missing or empty |
+| 400 | `amount_invalid` | `amount_kobo` | Amount must be a positive integer in kobo |
+| 400 | `currency_unsupported` | `currency` | Only `NGN` is supported |
+| 400 | `callback_url_invalid` | `callback_url` | Must start with `https://` |
+| 400 | `reference_required` | `reference` | Your reference is missing or empty |
+| 409 | `duplicate_reference` | `reference` | You already created an order with this reference in this environment — fetch it instead of retrying |
+| 503 | `unavailable_maintenance` | — | The merchant API is briefly paused for maintenance — retry with backoff |
+
+### Order actions
+
+| Status | `error` | Endpoint | Meaning |
+|---|---|---|---|
+| 400 | `order_not_refundable` | Refund | Only `approved` orders can be refunded |
+| 400 | `order_not_cancellable` | Cancel | The order is already paid, declined, expired, or refunded |
+| 400 | `fulfilment_status_invalid` | Push fulfilment | `status` must be `shipped`, `delivered`, or `note` |
+| 404 | `not_found` | Any `/orders/:id` | The order doesn't exist, or belongs to another merchant or the other environment |
+| 502 | `upstream_error` | Refund | The payment processor failed mid-call — **safe to retry** |
+
+### General
+
+| Status | `error` | Meaning |
 |---|---|---|
-| 400 | `bad_request` | Validation failed — non-positive amount, currency other than `NGN`, non-https `callback_url`, missing `Idempotency-Key`, empty `reference` |
-| 401 | `unauthorized` | Missing/malformed `Authorization`, unknown or revoked key |
-| 403 | `forbidden` | Account suspended, or a `tr_live_` key used before live mode is enabled |
-| 404 | `not_found` | Order doesn't exist, or belongs to a different merchant/environment |
-| 409 | `conflict` | Duplicate `reference` for your merchant+environment, or the order is past the state the call needs (e.g. expired) |
-| 429 | `too_many_requests` | Throttled — back off and retry |
-| 502 | `upstream_error` | The payment processor failed mid-call (e.g. a refund) — safe to retry |
-| 500 | `internal` | Unexpected server error; details are logged on our side |
-| 503 | `unavailable_maintenance` | The merchant API is temporarily disabled for maintenance |
+| 400 | `bad_request` | Request body failed to parse, or a validation not listed above |
+| 429 | `too_many_requests` | Throttled — back off and retry with jitter |
+| 500 | `internal` | Unexpected error on our side; details are logged against your `X-Request-Id` |
 
 ## Retry guidance
 
-- **`502` / `503` / network timeouts** — retry with backoff. Order creation is safe to retry
-  **with the same `Idempotency-Key`**: you'll get the original result, never a duplicate
-  order.
-- **`409` on create** — you already created an order with that `reference`; fetch it instead.
-- **`4xx` otherwise** — fix the request; retrying unchanged will fail the same way.
+<Steps>
+  <Step title="Network errors, 429, 502, 503 — retry">
+    Use exponential backoff with jitter. **Order creation is always safe to retry with the
+    same `Idempotency-Key`** — you'll get the original response back, never a duplicate
+    charge or order.
+  </Step>
+  <Step title="409 duplicate_reference — fetch, don't retry">
+    The order already exists. `GET /v1/merchant/orders/:id` (or look it up by your own
+    records) instead of creating again with a tweaked reference.
+  </Step>
+  <Step title="Other 4xx — fix the request">
+    The same request will fail the same way. `param` tells you which field to fix.
+  </Step>
+</Steps>
+
+## Format notes
+
+A few conventions worth knowing when you write your client:
+
+- **Success responses are bare resources** — no `{ status, data }` envelope. A `200`/JSON body
+  *is* the resource.
+- `error` codes are **append-only**: we add new codes over time but never repurpose existing
+  ones. Always handle unknown codes by falling back on the HTTP status class.
+- Coarse codes (`bad_request`, `not_found`, `conflict`, …) still appear on generic failures;
+  the granular codes above cover every *expected* failure on the merchant surface.
