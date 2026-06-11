@@ -38,13 +38,13 @@ curl -X POST https://api.taprail.app/v1/merchant/orders/550e8400-.../refund \
   "refund_reference": "sandbox_refund_550e8400-e29b-41d4-a716-446655440000"
 }
 ```
-```json 400 — not refundable
+```json 400 not refundable
 {
   "error": "order_not_refundable",
   "message": "only approved orders can be refunded"
 }
 ```
-```json 502 — processor failure (safe to retry)
+```json 502 processor failure (safe to retry)
 {
   "error": "upstream_error",
   "message": "refund failed: ..."

@@ -1,0 +1,85 @@
+---
+title: "Reliable webhook handling"
+description: "Acknowledge fast, dedupe, tolerate disorder, and know how to replay."
+---
+
+Webhooks are how you find out money moved. This guide covers the handful of practices that
+separate an integration that works in a demo from one that survives production.
+
+## Acknowledge first, work later
+
+Taprail waits up to 30 seconds for your 2xx. If your handler sends emails or talks to a slow
+database inside that window, you'll time out and the delivery gets retried, which means you
+now also have a duplicate to deal with.
+
+Verify the signature, write the event to a queue or table, return 200. Process afterwards.
+
+```text
+receive → verify → persist event → 200
+                          │
+                          └──▶ worker: fulfil, email, update inventory
+```
+
+## Expect duplicates
+
+A delivery can arrive twice even when nothing is wrong; your 200 can get lost in transit and
+we retry. Key your processing on something unique:
+
+```sql
+CREATE TABLE webhook_events (
+  dedupe_key TEXT PRIMARY KEY,   -- "<order_id>:<event>"
+  received_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+```
+
+Insert before processing. If the insert conflicts, you've handled this one already and can
+return 200 without doing anything.
+
+## Expect disorder
+
+Retries mean a later event can occasionally arrive before an earlier one finishes
+retrying. Don't build a state machine that breaks when `order.refunded` shows up while
+you're still processing `order.approved`. Two options:
+
+- Treat each event as a fact about the order's **current** state and write it idempotently
+  (`status = 'refunded'` is safe to apply in any order relative to `approved`).
+- Or fetch the truth: on any event, call
+  [`GET /v1/merchant/orders/:id`](/api-reference/get-order) and act on what the API says
+  rather than on the event alone. Costs a round trip, removes a class of bugs.
+
+## Check the environment
+
+Every event carries `env`. A sandbox event hitting your production handler should be a
+no-op. The cheapest production incident to prevent is shipping a real product because a test
+order approved.
+
+```javascript
+if (event.env !== EXPECTED_ENV) return res.sendStatus(200);
+```
+
+## When deliveries fail
+
+We retry on this schedule, then give up:
+
+```text
+1s → 5s → 25s → 2m → 10m → 1h → failed
+```
+
+The dashboard shows every attempt under **Payments → Webhooks → Deliveries**, including the
+HTTP status your endpoint returned. Anything in a `failed` state has a **Redeliver** button
+that re-queues it immediately. After an outage on your side, redeliver the failures in
+order, oldest first.
+
+## Monitor the boring way
+
+Two checks catch almost everything:
+
+1. Alert when an order is `approved` in the API but unpaid in your database after a few
+   minutes. That's a webhook that didn't land or a handler that crashed after the 200.
+2. Watch your endpoint's error rate. A deploy that breaks signature verification looks like
+   a sudden wall of 400s in the Deliveries tab.
+
+The first check has a cheap implementation: a periodic job that lists your recent unpaid
+orders and asks [`GET /v1/merchant/orders/:id/status`](/api-reference/get-order-status) for
+each. It doubles as your recovery path if webhooks are ever down for longer than the retry
+window.

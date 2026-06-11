@@ -2,7 +2,7 @@
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
   "name": "Taprail Developers",
-  "description": "Accept payments and run loyalty with Taprail — API reference, webhooks, and SDKs.",
+  "description": "Accept payments and run loyalty with Taprail. API reference, webhooks, and SDKs.",
   "colors": {
     "primary": "#18181b",
     "light": "#f6f6f4",
@@ -29,6 +29,15 @@
           {
             "group": "Webhooks",
             "pages": ["webhooks/overview", "webhooks/verify-signatures"]
+          },
+          {
+            "group": "Guides",
+            "pages": [
+              "guides/nextjs-checkout",
+              "guides/reliable-webhooks",
+              "guides/pos-qr",
+              "guides/testing"
+            ]
           },
           {
             "group": "Reference",

@@ -1,0 +1,176 @@
+---
+title: "Checkout with Next.js"
+description: "A complete integration: server route, pay button, and a verified webhook handler."
+---
+
+This guide builds a working checkout in a Next.js App Router project. Three pieces: a route
+handler that creates the order, a client component that opens the checkout, and a webhook
+route that verifies signatures and marks the order paid.
+
+You'll need a sandbox API key and a webhook signing secret from the
+[partner dashboard](https://partner.taprail.app). Put them in `.env.local`:
+
+```bash
+TAPRAIL_SECRET_KEY=tr_test_...
+TAPRAIL_WEBHOOK_SECRET=whsec_test_...
+```
+
+## 1. Create the order on the server
+
+The secret key stays server-side. This route takes a cart, computes the amount, and returns
+the intent to the browser.
+
+```typescript app/api/checkout/route.ts
+import { NextResponse } from "next/server";
+
+export async function POST(req: Request) {
+  const { cartId, items } = await req.json();
+
+  // Compute the total yourself. Never trust an amount from the browser.
+  const amount_kobo = items.reduce(
+    (sum: number, it: { price_kobo: number; quantity: number }) =>
+      sum + it.price_kobo * it.quantity,
+    0
+  );
+
+  const res = await fetch("https://api.taprail.app/v1/merchant/orders", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${process.env.TAPRAIL_SECRET_KEY}`,
+      "Content-Type": "application/json",
+      // Tie the key to the cart so a double-click can't create two orders.
+      "Idempotency-Key": `cart-${cartId}`,
+    },
+    body: JSON.stringify({ reference: cartId, amount_kobo, items }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json();
+    // duplicate_reference means this cart already has an order. That's fine,
+    // but you'll want to fetch and reuse it rather than show an error.
+    return NextResponse.json(err, { status: res.status });
+  }
+
+  return NextResponse.json(await res.json());
+}
+```
+
+## 2. The pay button
+
+```tsx app/checkout/PayButton.tsx
+"use client";
+
+import { useState } from "react";
+import { open } from "@taprail/checkout";
+
+export function PayButton({ cartId, items }: { cartId: string; items: CartItem[] }) {
+  const [busy, setBusy] = useState(false);
+
+  async function pay() {
+    setBusy(true);
+    try {
+      const res = await fetch("/api/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cartId, items }),
+      });
+      const intent = await res.json();
+
+      const result = await open(intent);
+      if (result.status === "approved") {
+        // Optimistic UX only. The webhook is what actually marks it paid.
+        window.location.href = `/orders/${result.order_id}/thanks`;
+      }
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <button onClick={pay} disabled={busy}>
+      {busy ? "Opening checkout…" : "Pay with Taprail"}
+    </button>
+  );
+}
+```
+
+On desktop this opens a modal with a QR. On mobile it sends the customer into the Taprail
+app, which means the promise never resolves there. Don't build fulfilment on top of it.
+
+## 3. The webhook route
+
+This is the part that actually matters. Verify the signature against the raw body, dedupe,
+then do your work.
+
+```typescript app/api/webhooks/taprail/route.ts
+import crypto from "node:crypto";
+import { NextResponse } from "next/server";
+
+export async function POST(req: Request) {
+  const raw = await req.text(); // raw body, before any JSON parsing
+  const header = req.headers.get("taprail-signature") ?? "";
+  const parts = Object.fromEntries(header.split(",").map((kv) => kv.split("=", 2)));
+
+  // Reject stale timestamps to block replays.
+  if (Math.abs(Date.now() / 1000 - Number(parts.t)) > 300) {
+    return new NextResponse("stale", { status: 400 });
+  }
+
+  const expected = crypto
+    .createHmac("sha256", process.env.TAPRAIL_WEBHOOK_SECRET!)
+    .update(`${parts.t}.${raw}`)
+    .digest("hex");
+
+  const valid =
+    parts.v1?.length === expected.length &&
+    crypto.timingSafeEqual(Buffer.from(parts.v1), Buffer.from(expected));
+  if (!valid) return new NextResponse("bad signature", { status: 400 });
+
+  const event = JSON.parse(raw);
+
+  // Sandbox events must never fulfil real orders.
+  if (event.env !== process.env.TAPRAIL_ENV) {
+    return new NextResponse(null, { status: 200 });
+  }
+
+  // Dedupe: deliveries can arrive more than once.
+  const seen = await db.webhookEvent.findUnique({
+    where: { key: `${event.order_id}:${event.event}` },
+  });
+  if (seen) return new NextResponse(null, { status: 200 });
+  await db.webhookEvent.create({ data: { key: `${event.order_id}:${event.event}` } });
+
+  switch (event.event) {
+    case "order.approved":
+      await db.order.update({
+        where: { reference: event.merchant_reference },
+        data: { paid: true, txRef: event.transaction_reference },
+      });
+      break;
+    case "order.expired":
+    case "order.declined":
+      await db.order.update({
+        where: { reference: event.merchant_reference },
+        data: { abandoned: true },
+      });
+      break;
+  }
+
+  return new NextResponse(null, { status: 200 });
+}
+```
+
+<Warning>
+  Next.js parses JSON bodies eagerly in some setups. Use `req.text()` as shown and only
+  parse after verifying. A re-serialized body will not match the signature.
+</Warning>
+
+## 4. Test it
+
+1. Run your app and expose the webhook route with a tunnel (`ngrok http 3000` or similar).
+2. Set the tunnel URL as your endpoint under **Payments → Webhooks**.
+3. Pay with a sandbox amount like `750000` (approves) and `750011` (declines). The
+   [testing guide](/guides/testing) covers the full matrix.
+
+When both the redirect and the webhook behave, you're ready for the
+[go-live checklist](/environments#going-live).

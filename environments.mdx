@@ -3,11 +3,11 @@ title: "Environments & going live"
 description: "Sandbox vs live, deterministic test amounts, and the go-live checklist."
 ---
 
-Taprail has two environments sharing one base URL — your API key decides which one you're in.
+Taprail has two environments sharing one base URL. Your API key decides which one you're in.
 
 | | Sandbox (`tr_test_…`) | Live (`tr_live_…`) |
 |---|---|---|
-| Charges | Simulated — no money moves | Real cards, real money |
+| Charges | Simulated, no money moves | Real cards, real money |
 | Outcome | Deterministic, by amount (below) | The customer's real authorization |
 | Payouts | Marked transferred, no actual transfer | Net settled to your payout account |
 | Availability | From signup | After Taprail review |
@@ -24,7 +24,7 @@ every path in CI without an app in the loop:
 |---|---|---|
 | `11` | Declined | `sandbox_declined` |
 | `22` | Declined (simulated processor timeout) | `sandbox_timeout` |
-| anything else | Approved | — |
+| anything else | Approved | |
 
 ```text
 750000 → approved
@@ -48,7 +48,7 @@ Work through the go-live checklist on the dashboard's **Payments** page:
     Configure the endpoint and store both signing secrets. Confirm you verify signatures.
   </Step>
   <Step title="Add a payout account">
-    Under **Payments → Settings**, pick your bank and verify the account — your net
+    Under **Payments → Settings**, pick your bank and verify the account. Your net
     (amount minus the Taprail fee) settles there.
   </Step>
   <Step title="Taprail enables live mode">
@@ -59,5 +59,5 @@ Work through the go-live checklist on the dashboard's **Payments** page:
 <Note>
   Fees: your per-order fee is a percentage of the amount with a cap, both shown on
   **Payments → Settings**. The fee is computed when the order is created and is
-  non-refundable — refunds return the full amount to the customer.
+  non-refundable; refunds return the full amount to the customer.
 </Note>

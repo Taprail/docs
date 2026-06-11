@@ -1,6 +1,6 @@
 ---
 title: "JS SDK"
-description: "@taprail/checkout — a ~1.6 KB drop-in checkout with React bindings."
+description: "@taprail/checkout is a ~1.6 KB drop-in checkout with React bindings."
 ---
 
 ```bash
@@ -27,7 +27,7 @@ const result = await open(intent, {
 //   transaction_reference: "tprm_..." | null }
 ```
 
-`open` accepts the **intent object**, a bare **order id**, or a **deep link URL** — whichever
+`open` accepts the **intent object**, a bare **order id**, or a **deep link URL**, whichever
 is handy.
 
 What happens per device:
@@ -36,7 +36,7 @@ What happens per device:
   endpoint every 2.5 s and resolves on a terminal status, or `{ status: "closed" }` if the
   customer dismisses it.
 - **Mobile** → the page navigates to the universal link and opens the Taprail app. The
-  promise never settles — rely on your [webhook](/webhooks/overview).
+  promise never settles. Rely on your [webhook](/webhooks/overview).
 
 <Warning>
   The SDK result is for UX (spinners, confirmation screens). Fulfil orders from the signed
@@ -91,4 +91,4 @@ init({
 });
 ```
 
-Defaults are the production origins — most integrations never call `init`.
+Defaults are the production origins, so most integrations never call `init`.

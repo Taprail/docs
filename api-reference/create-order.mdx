@@ -14,18 +14,18 @@ you hand to the checkout, and the fee Taprail will take.
 </ParamField>
 <ParamField header="Idempotency-Key" type="string" required>
   A unique key for this creation attempt. Retrying with the same key returns the original
-  response verbatim — never a duplicate order. Scoped to your merchant.
+  response verbatim, never a duplicate order. Scoped to your merchant.
 </ParamField>
 
 ### Body
 
 <ParamField body="reference" type="string" required>
-  Your own order reference (cart id, invoice number). Unique per merchant per environment —
+  Your own order reference (cart id, invoice number). Unique per merchant per environment;
   a duplicate returns `409`.
 </ParamField>
 <ParamField body="amount_kobo" type="integer" required>
   Amount the customer pays, in kobo (₦1 = 100 kobo). Must be positive. In sandbox, the last
-  two digits select the outcome — see [test amounts](/environments#deterministic-test-amounts).
+  two digits select the outcome. See [test amounts](/environments#deterministic-test-amounts).
 </ParamField>
 <ParamField body="currency" type="string" default="NGN">
   Only `NGN` is supported.
@@ -52,13 +52,13 @@ you hand to the checkout, and the fee Taprail will take.
 
 ### Response
 
-<ResponseField name="id" type="uuid">The order id — keep it.</ResponseField>
+<ResponseField name="id" type="uuid">The order id. Keep it.</ResponseField>
 <ResponseField name="status" type="string">Always `created`.</ResponseField>
 <ResponseField name="deep_link" type="string">
-  `https://pay.taprail.app/pay?o=<id>` — opens the Taprail app on mobile.
+  `https://pay.taprail.app/pay?o=<id>`. Opens the Taprail app on mobile.
 </ResponseField>
 <ResponseField name="qr_payload" type="string">
-  Same URL — render as a QR for desktop / point-of-sale.
+  The same URL. Render it as a QR for desktop or point-of-sale.
 </ResponseField>
 <ResponseField name="amount_kobo" type="integer">Echo of the amount.</ResponseField>
 <ResponseField name="fee_kobo" type="integer">
@@ -114,14 +114,14 @@ const intent = await res.json();
   "expires_at": "2026-06-11T15:30:00Z"
 }
 ```
-```json 409 — duplicate reference
+```json 409 duplicate reference
 {
   "error": "duplicate_reference",
   "message": "an order with this reference already exists",
   "param": "reference"
 }
 ```
-```json 400 — validation
+```json 400 validation
 {
   "error": "amount_invalid",
   "message": "amount_kobo must be a positive integer (kobo)",

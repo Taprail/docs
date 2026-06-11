@@ -14,18 +14,18 @@ Every error is JSON with the same shape:
 ```
 
 <ResponseField name="error" type="string" required>
-  Stable, machine-readable code — **branch on this**, never on `message`.
+  Stable, machine-readable code. Branch on this, never on `message`.
 </ResponseField>
 <ResponseField name="message" type="string" required>
   Human-readable detail for logs and debugging. Wording may change over time.
 </ResponseField>
 <ResponseField name="param" type="string">
-  Present on validation errors — the request field (or header) that failed.
+  Present on validation errors: the request field (or header) that failed.
 </ResponseField>
 
 <Tip>
-  Every response — success or error — carries an **`X-Request-Id`** header. Log it; quoting it
-  to support lets us trace the exact request through our systems.
+  Every response, success or error, carries an `X-Request-Id` header. Log it. Quoting it to
+  support lets us trace the exact request through our systems.
 </Tip>
 
 ## Error catalog
@@ -34,7 +34,7 @@ Every error is JSON with the same shape:
 
 | Status | `error` | Meaning | What to do |
 |---|---|---|---|
-| 401 | `invalid_api_key` | Missing/malformed `Authorization` header, unknown key, or revoked key | Send `Authorization: Bearer tr_test_…` with a current key; mint a new one if revoked |
+| 401 | `invalid_api_key` | Missing or malformed `Authorization` header, unknown key, or revoked key | Send `Authorization: Bearer tr_test_…` with a current key. Mint a new one if revoked |
 | 403 | `merchant_suspended` | Your merchant account is suspended | Contact support |
 | 403 | `live_mode_disabled` | A `tr_live_` key was used before live mode was enabled | Use a `tr_test_` key, or finish the [go-live checklist](/environments#going-live) |
 
@@ -47,8 +47,8 @@ Every error is JSON with the same shape:
 | 400 | `currency_unsupported` | `currency` | Only `NGN` is supported |
 | 400 | `callback_url_invalid` | `callback_url` | Must start with `https://` |
 | 400 | `reference_required` | `reference` | Your reference is missing or empty |
-| 409 | `duplicate_reference` | `reference` | You already created an order with this reference in this environment — fetch it instead of retrying |
-| 503 | `unavailable_maintenance` | — | The merchant API is briefly paused for maintenance — retry with backoff |
+| 409 | `duplicate_reference` | `reference` | You already created an order with this reference in this environment. Fetch it instead of retrying |
+| 503 | `unavailable_maintenance` | | The merchant API is briefly paused for maintenance. Retry with backoff |
 
 ### Order actions
 
@@ -58,29 +58,29 @@ Every error is JSON with the same shape:
 | 400 | `order_not_cancellable` | Cancel | The order is already paid, declined, expired, or refunded |
 | 400 | `fulfilment_status_invalid` | Push fulfilment | `status` must be `shipped`, `delivered`, or `note` |
 | 404 | `not_found` | Any `/orders/:id` | The order doesn't exist, or belongs to another merchant or the other environment |
-| 502 | `upstream_error` | Refund | The payment processor failed mid-call — **safe to retry** |
+| 502 | `upstream_error` | Refund | The payment processor failed mid-call. Safe to retry |
 
 ### General
 
 | Status | `error` | Meaning |
 |---|---|---|
 | 400 | `bad_request` | Request body failed to parse, or a validation not listed above |
-| 429 | `too_many_requests` | Throttled — back off and retry with jitter |
+| 429 | `too_many_requests` | Throttled. Back off and retry with jitter |
 | 500 | `internal` | Unexpected error on our side; details are logged against your `X-Request-Id` |
 
 ## Retry guidance
 
 <Steps>
-  <Step title="Network errors, 429, 502, 503 — retry">
-    Use exponential backoff with jitter. **Order creation is always safe to retry with the
-    same `Idempotency-Key`** — you'll get the original response back, never a duplicate
-    charge or order.
+  <Step title="Network errors, 429, 502, 503: retry">
+    Use exponential backoff with jitter. Order creation is always safe to retry with the
+    same `Idempotency-Key`: you get the original response back, never a duplicate charge or
+    order.
   </Step>
-  <Step title="409 duplicate_reference — fetch, don't retry">
-    The order already exists. `GET /v1/merchant/orders/:id` (or look it up by your own
-    records) instead of creating again with a tweaked reference.
+  <Step title="409 duplicate_reference: fetch, don't retry">
+    The order already exists. Look it up with `GET /v1/merchant/orders/:id` instead of
+    creating again with a tweaked reference.
   </Step>
-  <Step title="Other 4xx — fix the request">
+  <Step title="Other 4xx: fix the request">
     The same request will fail the same way. `param` tells you which field to fix.
   </Step>
 </Steps>
@@ -89,9 +89,9 @@ Every error is JSON with the same shape:
 
 A few conventions worth knowing when you write your client:
 
-- **Success responses are bare resources** — no `{ status, data }` envelope. A `200`/JSON body
-  *is* the resource.
-- `error` codes are **append-only**: we add new codes over time but never repurpose existing
-  ones. Always handle unknown codes by falling back on the HTTP status class.
-- Coarse codes (`bad_request`, `not_found`, `conflict`, …) still appear on generic failures;
-  the granular codes above cover every *expected* failure on the merchant surface.
+- Success responses are bare resources. There is no `{ status, data }` envelope; a 200 JSON
+  body is the resource itself.
+- `error` codes are append-only. We add new codes over time but never repurpose existing
+  ones. Handle unknown codes by falling back on the HTTP status class.
+- The coarse codes (`bad_request`, `not_found`, `conflict`) still appear on generic
+  failures. The granular codes above cover every expected failure on the merchant surface.

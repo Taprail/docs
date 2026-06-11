@@ -18,7 +18,7 @@ curl https://api.taprail.app/v1/merchant/orders/ORDER_ID \
 | `tr_test_…` | Sandbox | Immediately after minting |
 | `tr_live_…` | Live | After Taprail enables live mode for your account |
 
-The environment is **derived from the key** — there is no separate sandbox base URL and no
+The environment is **derived from the key**. There is no separate sandbox base URL and no
 way to override the environment in a request. A sandbox key can never create a live charge.
 
 ## Managing keys
@@ -30,11 +30,11 @@ Keys are minted from the [partner dashboard](https://partner.taprail.app) under
   new one.
 - **Rotation with grace**: rotating mints a new key and schedules existing keys to expire
   after 24 hours, so you can deploy the new key without downtime.
-- **Revocation** is immediate — any integration using a revoked key starts receiving `401`s.
+- **Revocation** is immediate: any integration using a revoked key starts receiving `401`s.
 
 <Warning>
   Keys are server-side secrets. Never embed them in web pages, mobile apps, or client-side
-  code — the checkout itself needs no key (the order id is the capability).
+  code. The checkout itself needs no key; the order id is the capability.
 </Warning>
 
 ## Auth failures
@@ -42,7 +42,7 @@ Keys are minted from the [partner dashboard](https://partner.taprail.app) under
 | Status | `error` | Meaning |
 |---|---|---|
 | 401 | `invalid_api_key` | Missing/malformed `Authorization` header, unknown key, or revoked key |
-| 403 | `merchant_suspended` | Your merchant account is suspended — contact support |
+| 403 | `merchant_suspended` | Your merchant account is suspended. Contact support |
 | 403 | `live_mode_disabled` | You used a `tr_live_` key before live mode was enabled for your account |
 
 ```json

@@ -1,0 +1,71 @@
+---
+title: "Testing your integration"
+description: "Exercise every path in sandbox before a real card gets involved."
+---
+
+Sandbox behaves like live with one difference: the outcome is decided by the amount, not by
+a customer. That makes every path scriptable.
+
+## The outcome matrix
+
+The last two digits of `amount_kobo` pick the result:
+
+| Amount ends in | Result | What it exercises |
+|---|---|---|
+| anything else | `approved` | The happy path, `order.approved` webhook, payout marking |
+| `11` | `declined`, reason `sandbox_declined` | Your decline UX and `order.declined` handling |
+| `22` | `declined`, reason `sandbox_timeout` | A processor timeout mid-charge |
+
+So a basic test suite creates three orders: `100000`, `100011`, `100022`, and asserts your
+system ends in the right state for each.
+
+## Things worth testing beyond the matrix
+
+**Idempotent creation.** Send the same create request twice with the same
+`Idempotency-Key`. You should get the same order id both times and exactly one order in
+your database.
+
+**Duplicate references.** Create two orders with the same `reference` and different
+idempotency keys. The second should fail with `duplicate_reference`, and your code should
+fetch the existing order rather than error out.
+
+**Expiry.** Create an order and don't pay it. Thirty minutes later it flips to `expired`
+and an `order.expired` webhook fires. For faster feedback in CI, treat any order stuck in
+`created` past your own timeout as abandoned rather than waiting out the full window.
+
+**Cancel.** Create, then cancel, then confirm a late status poll says `cancelled` and that
+paying it is impossible.
+
+**Refunds.** Approve an order (any non-magic amount), refund it via
+[`POST /v1/merchant/orders/:id/refund`](/api-reference/refund-order), and check you handle
+the `order.refunded` webhook. Sandbox returns a fake `refund_reference` so nothing moves.
+
+**Webhook signature failures.** Send your own handler a request with a wrong `v1` and a
+stale `t`. Both must be rejected with a 4xx. This is the test that catches the classic
+re-serialized-body bug.
+
+## Webhooks on localhost
+
+Your endpoint must be reachable over https, so tunnel during development:
+
+```bash
+ngrok http 3000
+# then set https://<id>.ngrok.app/api/webhooks/taprail in the dashboard
+```
+
+The **Deliveries** tab in the dashboard shows each attempt with the HTTP status your tunnel
+returned, and lets you redeliver any event while you iterate on the handler. That loop
+(edit handler, redeliver, check logs) is much faster than re-creating orders.
+
+## A CI shape that works
+
+```text
+1. POST order (approve amount)      → expect 200, status created
+2. POST same body, same Idem-Key    → expect same order id
+3. GET status until terminal        → expect approved
+4. POST refund                      → expect refunded
+5. Assert webhook handler received approved + refunded exactly once each
+```
+
+Run it against sandbox with a dedicated `tr_test_` key kept in CI secrets. None of it
+requires a device, an app, or a human.

@@ -4,7 +4,7 @@ api: "POST https://api.taprail.app/v1/merchant/orders/{id}/status"
 description: "Show shipping progress on the customer's order timeline in the app."
 ---
 
-Adds a fulfilment event — shipped, delivered, or a free-form note — to the customer's order
+Adds a fulfilment event (shipped, delivered, or a free-form note) to the customer's order
 timeline in the Taprail app. It does **not** change the payment status.
 
 <ParamField path="id" type="uuid" required>The order id.</ParamField>
@@ -15,7 +15,7 @@ timeline in the Taprail app. It does **not** change the payment status.
   One of `shipped`, `delivered`, `note`.
 </ParamField>
 <ParamField body="tracking_no" type="string">
-  Tracking number — shown with `shipped` / `delivered`.
+  Tracking number, shown with `shipped` and `delivered`.
 </ParamField>
 <ParamField body="eta" type="string">
   Expected arrival, free-form (e.g. `2026-06-15`).

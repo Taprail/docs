@@ -1,0 +1,96 @@
+---
+title: "QR payments at a counter"
+description: "Point-of-sale flow: create the order, show the QR, watch the status."
+---
+
+Pay with Taprail works at a physical counter without a card machine. The cashier rings up a
+total, your till shows a QR, the customer scans it with their phone and approves in the
+Taprail app. This guide is the till side of that.
+
+## The flow
+
+1. Cashier enters the amount, your system creates an order.
+2. The till screen renders `qr_payload` as a QR code.
+3. The customer scans and approves. Your till polls until the order goes terminal.
+4. On `approved`, print the receipt. On `expired` or `declined`, void and start over.
+
+## Create the order
+
+Same endpoint as e-commerce. Use the till and receipt number as the reference so each sale
+maps to exactly one order.
+
+```javascript
+const res = await fetch("https://api.taprail.app/v1/merchant/orders", {
+  method: "POST",
+  headers: {
+    Authorization: `Bearer ${process.env.TAPRAIL_SECRET_KEY}`,
+    "Content-Type": "application/json",
+    "Idempotency-Key": `till-3-receipt-88412`,
+  },
+  body: JSON.stringify({
+    reference: "till-3-receipt-88412",
+    amount_kobo: 1250000, // ₦12,500.00
+  }),
+});
+const order = await res.json();
+```
+
+## Show the QR
+
+Render `order.qr_payload` with any QR library. Make it big; people scan from arm's length.
+
+```javascript
+import QRCode from "qrcode";
+await QRCode.toCanvas(canvas, order.qr_payload, { width: 320 });
+```
+
+Show the amount next to it, and a countdown if you like: the order expires 30 minutes after
+creation, though at a counter you'll usually give up well before that.
+
+## Watch for the result
+
+A till is a trusted server environment, so poll the lean status endpoint directly:
+
+```javascript
+async function waitForPayment(orderId, { timeoutMs = 120_000 } = {}) {
+  const started = Date.now();
+  while (Date.now() - started < timeoutMs) {
+    const res = await fetch(
+      `https://api.taprail.app/v1/merchant/orders/${orderId}/status`,
+      { headers: { Authorization: `Bearer ${process.env.TAPRAIL_SECRET_KEY}` } }
+    );
+    const { status, transaction_reference } = await res.json();
+    if (status !== "created" && status !== "awaiting_user") {
+      return { status, transaction_reference };
+    }
+    await new Promise((r) => setTimeout(r, 2000));
+  }
+  return { status: "timeout" };
+}
+```
+
+Poll every couple of seconds. The moment status leaves `created`/`awaiting_user` you have
+your answer.
+
+| Result | Till behaviour |
+|---|---|
+| `approved` | Print receipt, store `transaction_reference` on the sale |
+| `declined` | Show the decline, offer to retry with a fresh order |
+| `expired` / `timeout` | Cancel the sale or re-create the order |
+
+## Cancel abandoned sales
+
+If the customer walks away, cancel the order so it can't be paid later from a screenshot of
+the QR:
+
+```bash
+curl -X POST https://api.taprail.app/v1/merchant/orders/ORDER_ID/cancel \
+  -H "Authorization: Bearer tr_live_..."
+```
+
+## Still set up webhooks
+
+Polling answers the cashier in the moment, but keep a webhook endpoint configured anyway. It
+covers the case where the till crashed between approval and printing, and it's the record
+your back office reconciles against. The
+[reliable webhooks guide](/guides/reliable-webhooks) applies as-is.

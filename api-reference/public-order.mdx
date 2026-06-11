@@ -4,7 +4,7 @@ api: "GET https://api.taprail.app/v1/checkout/orders/{id}"
 description: "Unauthenticated, display-safe order view used by the checkout and the JS SDK."
 ---
 
-The browser-facing order view. **No API key** — the unguessable order UUID is the
+The browser-facing order view. **No API key**: the unguessable order UUID is the
 capability, and only display-safe fields are returned (never customer details or the cart).
 
 This is what the JS SDK polls every 2.5 seconds, and what the hosted checkout page renders
@@ -21,14 +21,14 @@ from.
 <ResponseField name="status" type="string">Current status.</ResponseField>
 <ResponseField name="expires_at" type="string">ISO 8601 expiry.</ResponseField>
 <ResponseField name="deep_link" type="string">
-  `https://pay.taprail.app/pay?o=<id>` — opens the Taprail app.
+  `https://pay.taprail.app/pay?o=<id>`. Opens the Taprail app.
 </ResponseField>
 <ResponseField name="return_url" type="string | null">
   Your configured [browser return URL](/checkout-flows#browser-return-url); the checkout
   redirects here on a terminal status. `null` when not configured.
 </ResponseField>
 <ResponseField name="transaction_reference" type="string | null">
-  Processor charge reference once approved — lets you reconcile client-side.
+  Processor charge reference once approved, so you can reconcile client-side.
 </ResponseField>
 
 <RequestExample>
@@ -54,7 +54,7 @@ curl https://api.taprail.app/v1/checkout/orders/550e8400-e29b-41d4-a716-44665544
 </ResponseExample>
 
 <Warning>
-  Never fulfil an order from this endpoint or from browser state — confirm via the signed
+  Never fulfil an order from this endpoint or from browser state. Confirm via the signed
   [webhook](/webhooks/overview) or the authenticated
   [Get order](/api-reference/get-order) call.
 </Warning>

@@ -9,8 +9,8 @@ Every delivery carries a `Taprail-Signature` header:
 Taprail-Signature: t=1700000000,v1=6c2e0f6a4d…
 ```
 
-- `t` — unix timestamp (seconds) when the delivery was signed
-- `v1` — lowercase hex `HMAC-SHA256` of the string `"<t>.<raw_request_body>"`, keyed with
+- `t`: unix timestamp (seconds) when the delivery was signed
+- `v1`: lowercase hex `HMAC-SHA256` of the string `"<t>.<raw_request_body>"`, keyed with
   your **signing secret** for the event's environment (`whsec_test_…` or `whsec_live_…`)
 
 Secrets are generated under **Payments → Webhooks** and shown once. Each environment has its
@@ -20,7 +20,7 @@ own secret, so a leaked sandbox secret can't forge live events.
 
 <Steps>
   <Step title="Read the raw body">
-    Verify against the **exact bytes** you received — parse JSON only after verifying.
+    Verify against the **exact bytes** you received. Parse JSON only after verifying.
   </Step>
   <Step title="Recompute the signature">
     `expected = hex(hmac_sha256(secret, "<t>" + "." + raw_body))`
@@ -29,7 +29,7 @@ own secret, so a leaked sandbox secret can't forge live events.
     Reject on mismatch.
   </Step>
   <Step title="Reject stale timestamps">
-    Refuse deliveries where `|now − t|` exceeds ~5 minutes — this blocks replays.
+    Refuse deliveries where the timestamp is more than ~5 minutes old. This blocks replays.
   </Step>
 </Steps>
 
@@ -42,7 +42,7 @@ const app = express();
 
 app.post(
   "/taprail/webhook",
-  express.raw({ type: "application/json" }), // raw bytes — no JSON middleware first
+  express.raw({ type: "application/json" }), // raw bytes, no JSON middleware first
   (req, res) => {
     const secret = process.env.TAPRAIL_WEBHOOK_SECRET; // whsec_test_… / whsec_live_…
     const header = req.header("Taprail-Signature") ?? "";

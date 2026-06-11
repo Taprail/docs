@@ -1,10 +1,11 @@
 ---
 title: "Webhooks"
-description: "Signed order.* events with automatic retries — your source of truth."
+description: "Signed order.* events with automatic retries. This is your source of truth."
 ---
 
-Taprail POSTs a signed JSON event to your endpoint whenever an order changes state. Webhooks
-are the **authoritative** record of payment outcomes — browser-side results are best-effort.
+Taprail POSTs a signed JSON event to your endpoint whenever an order changes state. Treat
+webhooks as the authoritative record of payment outcomes; anything that happens in the
+customer's browser is best-effort by comparison.
 
 Configure your endpoint and signing secrets in the dashboard under **Payments → Webhooks**.
 The endpoint must be `https://`.
@@ -43,13 +44,13 @@ Taprail-Signature: t=1700000000,v1=6c2e0f…
 ```
 
 <ResponseField name="event" type="string">
-  The event type — same value as the `Taprail-Event` header.
+  The event type. Same value as the `Taprail-Event` header.
 </ResponseField>
 <ResponseField name="order_id" type="uuid">
   Taprail's order id.
 </ResponseField>
 <ResponseField name="merchant_reference" type="string">
-  Your own reference from order creation — use it to find the order on your side.
+  Your own reference from order creation. Use it to find the order on your side.
 </ResponseField>
 <ResponseField name="status" type="string">
   The order's status after this event.
@@ -61,36 +62,39 @@ Taprail-Signature: t=1700000000,v1=6c2e0f…
   Taprail's fee, in kobo. Your net is `amount_kobo - fee_kobo`.
 </ResponseField>
 <ResponseField name="env" type="string">
-  `test` or `live`. Always check this — sandbox events must never fulfil real orders.
+  `test` or `live`. Always check this; sandbox events must never fulfil real orders.
 </ResponseField>
 <ResponseField name="transaction_reference" type="string | null">
-  The processor charge reference; `null` on declined/expired events.
+  The processor charge reference. `null` on declined and expired events.
 </ResponseField>
 
 ## Responding
 
-Return any **2xx** status quickly (within 30 seconds). Do slow work — emails, fulfilment —
-asynchronously after acknowledging.
+Return any 2xx status within 30 seconds. Do slow work like emails and fulfilment
+asynchronously after acknowledging. The
+[reliable webhooks guide](/guides/reliable-webhooks) covers this pattern in detail.
 
 ## Retries
 
-Failed deliveries (non-2xx, timeout, connection error) are retried with exponential backoff:
+Failed deliveries (non-2xx, timeout, connection error) are retried with exponential
+backoff:
 
 ```text
 1s → 5s → 25s → 2m → 10m → 1h → marked failed
 ```
 
-You can inspect every delivery attempt — and **redeliver manually** — from
+You can inspect every delivery attempt, and redeliver manually, from
 **Payments → Webhooks → Deliveries** in the dashboard.
 
 <Note>
-  Deliveries can occasionally arrive **more than once** (e.g. your 2xx response was lost in
-  transit). Make your handler idempotent — `order_id` + `event` is a good dedupe key.
+  Deliveries can occasionally arrive more than once, for example when your 2xx response is
+  lost in transit. Make your handler idempotent. `order_id` plus `event` works well as a
+  dedupe key.
 </Note>
 
 ## Which URL gets called
 
-1. If the order was created with a `callback_url`, that order's events go **there**.
+1. If the order was created with a `callback_url`, that order's events go there.
 2. Otherwise, events go to your dashboard-configured webhook endpoint.
 3. If neither is set, no webhook is sent.
 

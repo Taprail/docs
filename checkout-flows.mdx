@@ -1,6 +1,6 @@
 ---
 title: "Checkout flows"
-description: "Modal, deep link, QR — and how the customer gets back to your site."
+description: "Modal, deep link, QR, and how the customer gets back to your site."
 ---
 
 Every order you create comes with two handles:
@@ -18,12 +18,12 @@ How you present them depends on where your customer is.
 
 `Taprail.open(intent)` from [`@taprail/checkout`](/sdk/js) does the right thing per device:
 
-- **Desktop** — opens a 420×620 modal with the order summary and a QR; the customer scans
+- **Desktop**: opens a 420×620 modal with the order summary and a QR; the customer scans
   with their phone and approves in the Taprail app. The SDK polls the
   [public order endpoint](/api-reference/public-order) every 2.5 s and resolves when the
   order reaches a terminal status.
-- **Mobile** — navigates to the universal link, which opens the Taprail app directly. The
-  page unloads, so the SDK promise never settles — your webhook carries the result.
+- **Mobile**: navigates to the universal link, which opens the Taprail app directly. The
+  page unloads, so the SDK promise never settles. Your webhook carries the result.
 
 ## Direct deep link
 
@@ -43,7 +43,7 @@ https://yourstore.com/checkout/complete?order=<order_id>&status=approved
 ```
 
 - Must be `https://`. Leave it blank to keep customers on the Taprail confirmation screen.
-- It's a UX convenience — **never fulfil from query params alone**. Confirm against the
+- It's a UX convenience. **Never fulfil from query params alone**; confirm against the
   webhook or `GET /v1/merchant/orders/:id`.
 
 ## Order lifecycle
@@ -62,7 +62,7 @@ created ──▶ awaiting_user ──▶ approved ──▶ refunded
 |---|---|
 | `created` | Order exists; the customer hasn't opened it yet |
 | `awaiting_user` | Opened in the app, not yet authorized |
-| `approved` | Authorized and charged — fulfil on this (via webhook) |
+| `approved` | Authorized and charged. Fulfil on this, via the webhook |
 | `declined` | Charge failed or the customer declined (`decline_reason` says why) |
 | `expired` | Not completed within the 30-minute window |
 | `cancelled` | You cancelled it before payment |

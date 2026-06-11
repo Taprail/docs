@@ -9,7 +9,7 @@ webhook land. No money moves in sandbox.
 <Steps>
   <Step title="Get a sandbox API key">
     Sign up at the [partner dashboard](https://partner.taprail.app/signup), then go to
-    **Payments → API Keys** and mint a sandbox key. It's shown once — copy it.
+    **Payments → API Keys** and mint a sandbox key. It's shown once, so copy it.
 
     ```text
     tr_test_a1b2c3d4e5f6789012345678901234ab
@@ -17,7 +17,7 @@ webhook land. No money moves in sandbox.
   </Step>
 
   <Step title="Create an order from your server">
-    Your secret key never touches the browser — create orders server-side.
+    Your secret key never touches the browser. Create orders server-side.
 
     <CodeGroup>
     ```bash cURL
@@ -78,7 +78,7 @@ webhook land. No money moves in sandbox.
   </Step>
 
   <Step title="Approve it in sandbox">
-    In sandbox no app is needed — the amount decides the outcome
+    In sandbox no app is needed; the amount decides the outcome
     (see [test amounts](/environments#deterministic-test-amounts)). An amount like
     `750000` approves; `750011` declines.
   </Step>
@@ -107,7 +107,7 @@ webhook land. No money moves in sandbox.
 </Steps>
 
 <Warning>
-  Treat the webhook — not the browser — as the source of truth for fulfilment. On mobile the
+  Treat the webhook, not the browser, as the source of truth for fulfilment. On mobile the
   page navigates away into the app, so the SDK promise may never settle.
 </Warning>
 

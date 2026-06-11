@@ -4,7 +4,7 @@ api: "GET https://api.taprail.app/v1/merchant/orders/{id}/status"
 description: "Lean status-only read, built for polling."
 ---
 
-A minimal response for server-side polling loops — use it instead of
+A minimal response for server-side polling loops. Use it instead of
 [Get order](/api-reference/get-order) when all you need is the status.
 
 <ParamField path="id" type="uuid" required>The order id.</ParamField>
@@ -35,6 +35,6 @@ curl https://api.taprail.app/v1/merchant/orders/550e8400-e29b-41d4-a716-44665544
 </ResponseExample>
 
 <Note>
-  Prefer [webhooks](/webhooks/overview) over polling where you can — they arrive within
+  Prefer [webhooks](/webhooks/overview) over polling where you can. They arrive within
   seconds and carry the full event payload.
 </Note>
