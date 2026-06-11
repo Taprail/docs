@@ -8,6 +8,10 @@
     "light": "#f6f6f4",
     "dark": "#0a0a0c"
   },
+  "logo": {
+    "light": "/logo/light.svg",
+    "dark": "/logo/dark.svg"
+  },
   "favicon": "/favicon.svg",
   "navigation": {
     "tabs": [
@@ -16,7 +20,7 @@
         "groups": [
           {
             "group": "Getting started",
-            "pages": ["introduction", "quickstart", "authentication", "environments"]
+            "pages": ["index", "quickstart", "authentication", "environments"]
           },
           {
             "group": "Checkout",
