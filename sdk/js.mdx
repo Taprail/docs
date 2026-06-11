@@ -1,0 +1,94 @@
+---
+title: "JS SDK"
+description: "@taprail/checkout — a ~1.6 KB drop-in checkout with React bindings."
+---
+
+```bash
+npm install @taprail/checkout
+```
+
+Zero runtime dependencies, ESM/CJS/UMD builds, optional React bindings (React ≥ 18).
+
+## Open a checkout
+
+```javascript
+import { open } from "@taprail/checkout";
+
+// `intent` is the JSON your server got from POST /v1/merchant/orders.
+const result = await open(intent, {
+  onSuccess: (r) => markPaidInUi(r.order_id),
+  onError: (e) => showError(e),
+  onClose: () => trackAbandon(),
+});
+
+// result:
+// { status: "approved" | "declined" | "expired" | "cancelled" | "refunded" | "closed",
+//   order_id: "...",
+//   transaction_reference: "tprm_..." | null }
+```
+
+`open` accepts the **intent object**, a bare **order id**, or a **deep link URL** — whichever
+is handy.
+
+What happens per device:
+
+- **Desktop** → modal (iframe) with the order summary + QR. The SDK polls the public order
+  endpoint every 2.5 s and resolves on a terminal status, or `{ status: "closed" }` if the
+  customer dismisses it.
+- **Mobile** → the page navigates to the universal link and opens the Taprail app. The
+  promise never settles — rely on your [webhook](/webhooks/overview).
+
+<Warning>
+  The SDK result is for UX (spinners, confirmation screens). Fulfil orders from the signed
+  webhook, or by confirming with `GET /v1/merchant/orders/:id` from your server.
+</Warning>
+
+## One-shot status check
+
+```javascript
+import { getStatus } from "@taprail/checkout";
+
+const { status, transaction_reference } = await getStatus(intent);
+```
+
+## React
+
+```tsx
+import { TaprailButton, useTaprailCheckout } from "@taprail/checkout/react";
+
+// Drop-in button
+<TaprailButton
+  intent={intent}
+  onSuccess={(r) => router.push(`/orders/${r.order_id}/thanks`)}
+>
+  Pay ₦7,500
+</TaprailButton>
+
+// Or the hook for custom UI
+const { open, pending } = useTaprailCheckout();
+<button disabled={pending} onClick={() => open(intent)}>
+  {pending ? "Processing…" : "Pay"}
+</button>
+```
+
+## Script tag (no bundler)
+
+```html
+<script src="https://unpkg.com/@taprail/checkout"></script>
+<script>
+  Taprail.open(intent, { onSuccess: handlePaid });
+</script>
+```
+
+## Pointing at staging
+
+```javascript
+import { init } from "@taprail/checkout";
+
+init({
+  apiBase: "https://api.staging.taprail.app",
+  embedBase: "https://pay.staging.taprail.app",
+});
+```
+
+Defaults are the production origins — most integrations never call `init`.

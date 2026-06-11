@@ -1,0 +1,123 @@
+---
+title: "Quickstart"
+description: "Take your first sandbox payment in about ten minutes."
+---
+
+You'll mint a sandbox key, create an order from your server, open the checkout, and watch the
+webhook land. No money moves in sandbox.
+
+<Steps>
+  <Step title="Get a sandbox API key">
+    Sign up at the [partner dashboard](https://partner.taprail.app/signup), then go to
+    **Payments → API Keys** and mint a sandbox key. It's shown once — copy it.
+
+    ```text
+    tr_test_a1b2c3d4e5f6789012345678901234ab
+    ```
+  </Step>
+
+  <Step title="Create an order from your server">
+    Your secret key never touches the browser — create orders server-side.
+
+    <CodeGroup>
+    ```bash cURL
+    curl -X POST https://api.taprail.app/v1/merchant/orders \
+      -H "Authorization: Bearer tr_test_..." \
+      -H "Content-Type: application/json" \
+      -H "Idempotency-Key: order-1234-attempt-1" \
+      -d '{
+        "reference": "order-1234",
+        "amount_kobo": 750000,
+        "items": [
+          { "name": "Leather tote", "quantity": 1, "price_kobo": 750000 }
+        ]
+      }'
+    ```
+    ```javascript Node.js
+    const res = await fetch("https://api.taprail.app/v1/merchant/orders", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${process.env.TAPRAIL_SECRET_KEY}`,
+        "Content-Type": "application/json",
+        "Idempotency-Key": "order-1234-attempt-1",
+      },
+      body: JSON.stringify({
+        reference: "order-1234",
+        amount_kobo: 750000, // ₦7,500.00
+        items: [{ name: "Leather tote", quantity: 1, price_kobo: 750000 }],
+      }),
+    });
+    const intent = await res.json();
+    ```
+    </CodeGroup>
+
+    ```json Response
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440000",
+      "status": "created",
+      "deep_link": "https://pay.taprail.app/pay?o=550e8400-e29b-41d4-a716-446655440000",
+      "qr_payload": "https://pay.taprail.app/pay?o=550e8400-e29b-41d4-a716-446655440000",
+      "amount_kobo": 750000,
+      "fee_kobo": 7500,
+      "expires_at": "2026-06-11T15:30:00Z"
+    }
+    ```
+  </Step>
+
+  <Step title="Open the checkout in the browser">
+    Pass the intent to the [JS SDK](/sdk/js). Desktop customers get a modal with a QR to scan;
+    mobile customers are sent straight into the Taprail app.
+
+    ```javascript
+    import { open } from "@taprail/checkout";
+
+    const result = await open(intent, {
+      onSuccess: (r) => console.log("Paid!", r.transaction_reference),
+    });
+    ```
+  </Step>
+
+  <Step title="Approve it in sandbox">
+    In sandbox no app is needed — the amount decides the outcome
+    (see [test amounts](/environments#deterministic-test-amounts)). An amount like
+    `750000` approves; `750011` declines.
+  </Step>
+
+  <Step title="Receive the webhook">
+    Set your endpoint under **Payments → Webhooks** in the dashboard. Within seconds of
+    approval you'll receive a signed event:
+
+    ```json
+    {
+      "event": "order.approved",
+      "order_id": "550e8400-e29b-41d4-a716-446655440000",
+      "merchant_reference": "order-1234",
+      "status": "approved",
+      "amount_kobo": 750000,
+      "fee_kobo": 7500,
+      "currency": "NGN",
+      "env": "test",
+      "transaction_reference": "tprm_550e8400-...",
+      "created_at": "2026-06-11T14:05:00Z"
+    }
+    ```
+
+    Always [verify the signature](/webhooks/verify-signatures) before trusting a delivery.
+  </Step>
+</Steps>
+
+<Warning>
+  Treat the webhook — not the browser — as the source of truth for fulfilment. On mobile the
+  page navigates away into the app, so the SDK promise may never settle.
+</Warning>
+
+## Next
+
+<CardGroup cols={2}>
+  <Card title="Checkout flows" href="/checkout-flows" icon="window">
+    Modal vs deep link vs QR, and the browser return URL.
+  </Card>
+  <Card title="Go live" href="/environments#going-live" icon="circle-check">
+    The checklist between sandbox and charging real cards.
+  </Card>
+</CardGroup>

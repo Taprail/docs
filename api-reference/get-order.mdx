@@ -1,0 +1,71 @@
+---
+title: "Get order"
+api: "GET https://api.taprail.app/v1/merchant/orders/{id}"
+description: "Fetch the full order record."
+---
+
+Returns everything about one of your orders. Scoped to your merchant and the key's
+environment — a sandbox key can't read live orders.
+
+<ParamField path="id" type="uuid" required>The order id.</ParamField>
+
+### Response
+
+<ResponseField name="id" type="uuid">Order id.</ResponseField>
+<ResponseField name="merchant_reference" type="string">Your reference from creation.</ResponseField>
+<ResponseField name="amount_kobo" type="integer">Amount the customer pays.</ResponseField>
+<ResponseField name="fee_kobo" type="integer">Taprail's fee.</ResponseField>
+<ResponseField name="currency" type="string">`NGN`.</ResponseField>
+<ResponseField name="items" type="array">The cart you supplied.</ResponseField>
+<ResponseField name="env" type="string">`test` or `live`.</ResponseField>
+<ResponseField name="status" type="string">
+  `created` · `awaiting_user` · `approved` · `declined` · `expired` · `cancelled` · `refunded`
+</ResponseField>
+<ResponseField name="payout_state" type="string">
+  Settlement of your net: `none` → `pending` → `transferred` (or `failed`).
+</ResponseField>
+<ResponseField name="decline_reason" type="string | null">
+  Why a declined order declined (e.g. `user_declined`, `sandbox_declined`).
+</ResponseField>
+<ResponseField name="transaction_reference" type="string | null">
+  Processor charge reference once approved.
+</ResponseField>
+<ResponseField name="customer_phone" type="string | null">From creation, if supplied.</ResponseField>
+<ResponseField name="expires_at" type="string">ISO 8601 expiry.</ResponseField>
+<ResponseField name="approved_at" type="string | null">When the charge landed.</ResponseField>
+<ResponseField name="created_at" type="string">When you created it.</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl https://api.taprail.app/v1/merchant/orders/550e8400-e29b-41d4-a716-446655440000 \
+  -H "Authorization: Bearer tr_test_..."
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "merchant_reference": "order-1234",
+  "amount_kobo": 750000,
+  "fee_kobo": 7500,
+  "currency": "NGN",
+  "items": [{ "name": "Leather tote", "quantity": 1, "price_kobo": 750000 }],
+  "env": "test",
+  "status": "approved",
+  "payout_state": "pending",
+  "decline_reason": null,
+  "transaction_reference": "tprm_550e8400-e29b-41d4-a716-446655440000",
+  "customer_phone": null,
+  "expires_at": "2026-06-11T15:30:00Z",
+  "approved_at": "2026-06-11T14:35:00Z",
+  "created_at": "2026-06-11T14:05:00Z"
+}
+```
+```json 404
+{
+  "error": "not_found",
+  "message": ""
+}
+```
+</ResponseExample>

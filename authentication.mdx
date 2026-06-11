@@ -1,0 +1,45 @@
+---
+title: "Authentication"
+description: "Bearer API keys, per-environment, minted from the partner dashboard."
+---
+
+Every merchant API request is authenticated with a secret API key in the `Authorization`
+header:
+
+```bash
+curl https://api.taprail.app/v1/merchant/orders/ORDER_ID \
+  -H "Authorization: Bearer tr_test_a1b2c3d4e5f6789012345678901234ab"
+```
+
+## Key format
+
+| Prefix | Environment | Works when |
+|---|---|---|
+| `tr_test_…` | Sandbox | Immediately after minting |
+| `tr_live_…` | Live | After Taprail enables live mode for your account |
+
+The environment is **derived from the key** — there is no separate sandbox base URL and no
+way to override the environment in a request. A sandbox key can never create a live charge.
+
+## Managing keys
+
+Keys are minted from the [partner dashboard](https://partner.taprail.app) under
+**Payments → API Keys**:
+
+- The full key is shown **once** at mint time; only a hash is stored. If you lose it, mint a
+  new one.
+- **Rotation with grace**: rotating mints a new key and schedules existing keys to expire
+  after 24 hours, so you can deploy the new key without downtime.
+- **Revocation** is immediate — any integration using a revoked key starts receiving `401`s.
+
+<Warning>
+  Keys are server-side secrets. Never embed them in web pages, mobile apps, or client-side
+  code — the checkout itself needs no key (the order id is the capability).
+</Warning>
+
+## Auth failures
+
+| Status | Meaning |
+|---|---|
+| `401 unauthorized` | Missing/malformed `Authorization` header, unknown key, or revoked key |
+| `403 forbidden` | Your account is suspended, or you used a `tr_live_` key before live mode was enabled |

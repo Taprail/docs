@@ -1,0 +1,62 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "mint",
+  "name": "Taprail Developers",
+  "description": "Accept payments and run loyalty with Taprail — API reference, webhooks, and SDKs.",
+  "colors": {
+    "primary": "#18181b",
+    "light": "#f6f6f4",
+    "dark": "#0a0a0c"
+  },
+  "favicon": "/favicon.svg",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Getting started",
+            "pages": ["introduction", "quickstart", "authentication", "environments"]
+          },
+          {
+            "group": "Checkout",
+            "pages": ["checkout-flows", "sdk/js"]
+          },
+          {
+            "group": "Webhooks",
+            "pages": ["webhooks/overview", "webhooks/verify-signatures"]
+          },
+          {
+            "group": "Reference",
+            "pages": ["errors"]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Orders",
+            "pages": [
+              "api-reference/create-order",
+              "api-reference/get-order",
+              "api-reference/get-order-status",
+              "api-reference/push-fulfillment",
+              "api-reference/refund-order",
+              "api-reference/cancel-order"
+            ]
+          },
+          {
+            "group": "Checkout (public)",
+            "pages": ["api-reference/public-order"]
+          }
+        ]
+      }
+    ]
+  },
+  "footer": {
+    "socials": {
+      "website": "https://taprail.app"
+    }
+  }
+}

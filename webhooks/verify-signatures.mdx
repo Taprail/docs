@@ -1,0 +1,124 @@
+---
+title: "Verify signatures"
+description: "Authenticate every webhook delivery before trusting it."
+---
+
+Every delivery carries a `Taprail-Signature` header:
+
+```text
+Taprail-Signature: t=1700000000,v1=6c2e0f6a4d…
+```
+
+- `t` — unix timestamp (seconds) when the delivery was signed
+- `v1` — lowercase hex `HMAC-SHA256` of the string `"<t>.<raw_request_body>"`, keyed with
+  your **signing secret** for the event's environment (`whsec_test_…` or `whsec_live_…`)
+
+Secrets are generated under **Payments → Webhooks** and shown once. Each environment has its
+own secret, so a leaked sandbox secret can't forge live events.
+
+## Verification steps
+
+<Steps>
+  <Step title="Read the raw body">
+    Verify against the **exact bytes** you received — parse JSON only after verifying.
+  </Step>
+  <Step title="Recompute the signature">
+    `expected = hex(hmac_sha256(secret, "<t>" + "." + raw_body))`
+  </Step>
+  <Step title="Compare in constant time">
+    Reject on mismatch.
+  </Step>
+  <Step title="Reject stale timestamps">
+    Refuse deliveries where `|now − t|` exceeds ~5 minutes — this blocks replays.
+  </Step>
+</Steps>
+
+<CodeGroup>
+```javascript Node.js (Express)
+import crypto from "node:crypto";
+import express from "express";
+
+const app = express();
+
+app.post(
+  "/taprail/webhook",
+  express.raw({ type: "application/json" }), // raw bytes — no JSON middleware first
+  (req, res) => {
+    const secret = process.env.TAPRAIL_WEBHOOK_SECRET; // whsec_test_… / whsec_live_…
+    const header = req.header("Taprail-Signature") ?? "";
+    const parts = Object.fromEntries(
+      header.split(",").map((kv) => kv.split("=", 2))
+    );
+
+    const tolerance = 300; // seconds
+    if (Math.abs(Date.now() / 1000 - Number(parts.t)) > tolerance) {
+      return res.status(400).send("stale timestamp");
+    }
+
+    const expected = crypto
+      .createHmac("sha256", secret)
+      .update(`${parts.t}.${req.body}`)
+      .digest("hex");
+
+    const valid =
+      parts.v1?.length === expected.length &&
+      crypto.timingSafeEqual(Buffer.from(parts.v1), Buffer.from(expected));
+    if (!valid) return res.status(400).send("bad signature");
+
+    const event = JSON.parse(req.body);
+    // …acknowledge fast, process async…
+    res.sendStatus(200);
+  }
+);
+```
+```python Python (Flask)
+import hashlib, hmac, json, os, time
+from flask import Flask, request, abort
+
+app = Flask(__name__)
+SECRET = os.environ["TAPRAIL_WEBHOOK_SECRET"].encode()
+
+@app.post("/taprail/webhook")
+def taprail_webhook():
+    header = request.headers.get("Taprail-Signature", "")
+    parts = dict(kv.split("=", 1) for kv in header.split(",") if "=" in kv)
+
+    if abs(time.time() - int(parts.get("t", 0))) > 300:
+        abort(400, "stale timestamp")
+
+    raw = request.get_data()  # exact bytes
+    expected = hmac.new(SECRET, f"{parts['t']}.".encode() + raw, hashlib.sha256).hexdigest()
+    if not hmac.compare_digest(parts.get("v1", ""), expected):
+        abort(400, "bad signature")
+
+    event = json.loads(raw)
+    # …acknowledge fast, process async…
+    return "", 200
+```
+```php PHP
+<?php
+$secret = getenv("TAPRAIL_WEBHOOK_SECRET");
+$raw = file_get_contents("php://input");
+
+parse_str(str_replace(",", "&", $_SERVER["HTTP_TAPRAIL_SIGNATURE"] ?? ""), $parts);
+
+if (abs(time() - (int)($parts["t"] ?? 0)) > 300) {
+    http_response_code(400); exit("stale timestamp");
+}
+
+$expected = hash_hmac("sha256", $parts["t"] . "." . $raw, $secret);
+if (!hash_equals($expected, $parts["v1"] ?? "")) {
+    http_response_code(400); exit("bad signature");
+}
+
+$event = json_decode($raw, true);
+// …acknowledge fast, process async…
+http_response_code(200);
+```
+</CodeGroup>
+
+<Warning>
+  Common pitfalls: verifying a re-serialized JSON body instead of the raw bytes; using the
+  wrong environment's secret (check the event's `env` field); and string `==` comparison
+  instead of constant-time compare.
+</Warning>

@@ -1,0 +1,53 @@
+---
+title: "Refund order"
+api: "POST https://api.taprail.app/v1/merchant/orders/{id}/refund"
+description: "Return the full charged amount to the customer."
+---
+
+Refunds an **approved** order. The customer gets back the full amount they paid; the Taprail
+fee is non-refundable, so the refund cost comes out of your settled funds.
+
+<ParamField path="id" type="uuid" required>The order id.</ParamField>
+
+No request body.
+
+### Response
+
+<ResponseField name="status" type="string">`refunded`.</ResponseField>
+<ResponseField name="refund_reference" type="string">
+  The processor refund reference (a sandbox reference in test mode).
+</ResponseField>
+
+### Side effects
+
+- The order moves to `refunded` (terminal) and an `order.refunded`
+  [webhook](/webhooks/overview) is delivered.
+- The customer is emailed a refund confirmation (when we have their email).
+
+<RequestExample>
+```bash cURL
+curl -X POST https://api.taprail.app/v1/merchant/orders/550e8400-.../refund \
+  -H "Authorization: Bearer tr_test_..."
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "status": "refunded",
+  "refund_reference": "sandbox_refund_550e8400-e29b-41d4-a716-446655440000"
+}
+```
+```json 400 — not refundable
+{
+  "error": "bad_request",
+  "message": "only approved orders can be refunded"
+}
+```
+```json 502 — processor failure (safe to retry)
+{
+  "error": "upstream_error",
+  "message": "refund failed: ..."
+}
+```
+</ResponseExample>

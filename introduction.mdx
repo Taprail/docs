@@ -1,0 +1,67 @@
+---
+title: "Introduction"
+description: "Accept payments inside the Taprail app — server API, drop-in checkout, and signed webhooks."
+---
+
+**Pay with Taprail** lets your customers pay you from inside the Taprail app. You create an
+order from your server, hand the customer a checkout (a drop-in modal on desktop, a deep
+link into the app on mobile), and receive a signed webhook the moment the payment lands.
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Mint a sandbox key and take your first test payment in about ten minutes.
+  </Card>
+  <Card title="API Reference" icon="code" href="/api-reference/create-order">
+    Every endpoint with request fields, sample responses, and error cases.
+  </Card>
+  <Card title="Webhooks" icon="webhook" href="/webhooks/overview">
+    Signed `order.*` events with automatic retries — your source of truth.
+  </Card>
+  <Card title="JS SDK" icon="js" href="/sdk/js">
+    `@taprail/checkout` — a ~1.6 KB drop-in with React bindings.
+  </Card>
+</CardGroup>
+
+## How a payment flows
+
+<Steps>
+  <Step title="Create an order from your server">
+    `POST /v1/merchant/orders` with your API key, an amount, and your own reference.
+    You get back an order id, a deep link, and a QR payload.
+  </Step>
+  <Step title="Hand the customer the checkout">
+    On the web, call `Taprail.open(intent)` from the JS SDK — desktop gets a modal with a QR,
+    mobile gets bounced straight into the Taprail app.
+  </Step>
+  <Step title="The customer approves in the app">
+    They see your business name, the amount, and their cart, and authorize with a tap.
+  </Step>
+  <Step title="You get the result">
+    A signed `order.approved` (or `order.declined`) webhook hits your endpoint. If you set a
+    return URL, the browser is also sent back to your site.
+  </Step>
+</Steps>
+
+## Base URL
+
+```text
+https://api.taprail.app
+```
+
+All requests and responses are JSON. Amounts are **integers in kobo** (₦1 = 100 kobo) and the
+only supported currency is `NGN`.
+
+## At a glance
+
+| | |
+|---|---|
+| Auth | `Authorization: Bearer tr_test_…` / `tr_live_…` API keys |
+| Environments | Sandbox + live, derived from the key — same base URL |
+| Idempotency | `Idempotency-Key` header on order creation |
+| Result delivery | Signed webhooks (authoritative) + SDK promise + optional browser return URL |
+| Order expiry | 30 minutes by default |
+
+<Note>
+  Get your API keys from the [partner dashboard](https://partner.taprail.app) — sandbox keys
+  work the moment you sign up; live keys unlock after a short review.
+</Note>

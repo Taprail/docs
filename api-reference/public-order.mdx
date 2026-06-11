@@ -1,0 +1,60 @@
+---
+title: "Get order (public)"
+api: "GET https://api.taprail.app/v1/checkout/orders/{id}"
+description: "Unauthenticated, display-safe order view used by the checkout and the JS SDK."
+---
+
+The browser-facing order view. **No API key** — the unguessable order UUID is the
+capability, and only display-safe fields are returned (never customer details or the cart).
+
+This is what the JS SDK polls every 2.5 seconds, and what the hosted checkout page renders
+from.
+
+<ParamField path="id" type="uuid" required>The order id.</ParamField>
+
+### Response
+
+<ResponseField name="id" type="uuid">Order id.</ResponseField>
+<ResponseField name="merchant_name" type="string">Your business display name.</ResponseField>
+<ResponseField name="amount_kobo" type="integer">Amount to pay.</ResponseField>
+<ResponseField name="currency" type="string">`NGN`.</ResponseField>
+<ResponseField name="status" type="string">Current status.</ResponseField>
+<ResponseField name="expires_at" type="string">ISO 8601 expiry.</ResponseField>
+<ResponseField name="deep_link" type="string">
+  `https://pay.taprail.app/pay?o=<id>` — opens the Taprail app.
+</ResponseField>
+<ResponseField name="return_url" type="string | null">
+  Your configured [browser return URL](/checkout-flows#browser-return-url); the checkout
+  redirects here on a terminal status. `null` when not configured.
+</ResponseField>
+<ResponseField name="transaction_reference" type="string | null">
+  Processor charge reference once approved — lets you reconcile client-side.
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl https://api.taprail.app/v1/checkout/orders/550e8400-e29b-41d4-a716-446655440000
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "merchant_name": "Acme Stores",
+  "amount_kobo": 750000,
+  "currency": "NGN",
+  "status": "created",
+  "expires_at": "2026-06-11T15:30:00Z",
+  "deep_link": "https://pay.taprail.app/pay?o=550e8400-e29b-41d4-a716-446655440000",
+  "return_url": "https://acmestores.com/checkout/complete",
+  "transaction_reference": null
+}
+```
+</ResponseExample>
+
+<Warning>
+  Never fulfil an order from this endpoint or from browser state — confirm via the signed
+  [webhook](/webhooks/overview) or the authenticated
+  [Get order](/api-reference/get-order) call.
+</Warning>

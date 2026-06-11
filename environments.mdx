@@ -1,0 +1,63 @@
+---
+title: "Environments & going live"
+description: "Sandbox vs live, deterministic test amounts, and the go-live checklist."
+---
+
+Taprail has two environments sharing one base URL — your API key decides which one you're in.
+
+| | Sandbox (`tr_test_…`) | Live (`tr_live_…`) |
+|---|---|---|
+| Charges | Simulated — no money moves | Real cards, real money |
+| Outcome | Deterministic, by amount (below) | The customer's real authorization |
+| Payouts | Marked transferred, no actual transfer | Net settled to your payout account |
+| Availability | From signup | After Taprail review |
+
+Orders, webhooks, keys, and dashboard views are all environment-scoped: a sandbox key only
+ever sees sandbox orders.
+
+## Deterministic test amounts
+
+In sandbox, the **last two digits of `amount_kobo`** decide the outcome, so you can exercise
+every path in CI without an app in the loop:
+
+| `amount_kobo % 100` | Outcome | `decline_reason` |
+|---|---|---|
+| `11` | Declined | `sandbox_declined` |
+| `22` | Declined (simulated processor timeout) | `sandbox_timeout` |
+| anything else | Approved | — |
+
+```text
+750000 → approved
+750011 → declined (sandbox_declined)
+750022 → declined (sandbox_timeout)
+```
+
+## Going live
+
+Work through the go-live checklist on the dashboard's **Payments** page:
+
+<Steps>
+  <Step title="Verify your email">
+    Live mode is gated on a verified address.
+  </Step>
+  <Step title="Build and test in sandbox">
+    Mint a sandbox key, integrate order creation + checkout, and exercise the decline and
+    expiry paths with test amounts.
+  </Step>
+  <Step title="Set your webhook endpoint">
+    Configure the endpoint and store both signing secrets. Confirm you verify signatures.
+  </Step>
+  <Step title="Add a payout account">
+    Under **Payments → Settings**, pick your bank and verify the account — your net
+    (amount minus the Taprail fee) settles there.
+  </Step>
+  <Step title="Taprail enables live mode">
+    Once review completes, mint a `tr_live_` key and switch your server's secret.
+  </Step>
+</Steps>
+
+<Note>
+  Fees: your per-order fee is a percentage of the amount with a cap, both shown on
+  **Payments → Settings**. The fee is computed when the order is created and is
+  non-refundable — refunds return the full amount to the customer.
+</Note>

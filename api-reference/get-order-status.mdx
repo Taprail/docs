@@ -1,0 +1,40 @@
+---
+title: "Get order status"
+api: "GET https://api.taprail.app/v1/merchant/orders/{id}/status"
+description: "Lean status-only read, built for polling."
+---
+
+A minimal response for server-side polling loops — use it instead of
+[Get order](/api-reference/get-order) when all you need is the status.
+
+<ParamField path="id" type="uuid" required>The order id.</ParamField>
+
+### Response
+
+<ResponseField name="id" type="uuid">Order id.</ResponseField>
+<ResponseField name="status" type="string">Current status.</ResponseField>
+<ResponseField name="transaction_reference" type="string | null">
+  Processor charge reference; `null` until approved.
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl https://api.taprail.app/v1/merchant/orders/550e8400-e29b-41d4-a716-446655440000/status \
+  -H "Authorization: Bearer tr_test_..."
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "status": "approved",
+  "transaction_reference": "tprm_550e8400-e29b-41d4-a716-446655440000"
+}
+```
+</ResponseExample>
+
+<Note>
+  Prefer [webhooks](/webhooks/overview) over polling where you can — they arrive within
+  seconds and carry the full event payload.
+</Note>

@@ -1,0 +1,40 @@
+---
+title: "Errors"
+description: "Every error is JSON with a stable machine-readable code."
+---
+
+```json
+{
+  "error": "bad_request",
+  "message": "amount_kobo must be positive"
+}
+```
+
+<ResponseField name="error" type="string">
+  Stable, machine-readable code — branch on this.
+</ResponseField>
+<ResponseField name="message" type="string">
+  Human-readable detail. May change over time; don't parse it.
+</ResponseField>
+
+## Status codes
+
+| Status | `error` | When |
+|---|---|---|
+| 400 | `bad_request` | Validation failed — non-positive amount, currency other than `NGN`, non-https `callback_url`, missing `Idempotency-Key`, empty `reference` |
+| 401 | `unauthorized` | Missing/malformed `Authorization`, unknown or revoked key |
+| 403 | `forbidden` | Account suspended, or a `tr_live_` key used before live mode is enabled |
+| 404 | `not_found` | Order doesn't exist, or belongs to a different merchant/environment |
+| 409 | `conflict` | Duplicate `reference` for your merchant+environment, or the order is past the state the call needs (e.g. expired) |
+| 429 | `too_many_requests` | Throttled — back off and retry |
+| 502 | `upstream_error` | The payment processor failed mid-call (e.g. a refund) — safe to retry |
+| 500 | `internal` | Unexpected server error; details are logged on our side |
+| 503 | `unavailable_maintenance` | The merchant API is temporarily disabled for maintenance |
+
+## Retry guidance
+
+- **`502` / `503` / network timeouts** — retry with backoff. Order creation is safe to retry
+  **with the same `Idempotency-Key`**: you'll get the original result, never a duplicate
+  order.
+- **`409` on create** — you already created an order with that `reference`; fetch it instead.
+- **`4xx` otherwise** — fix the request; retrying unchanged will fail the same way.

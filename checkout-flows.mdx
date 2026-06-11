@@ -1,0 +1,76 @@
+---
+title: "Checkout flows"
+description: "Modal, deep link, QR — and how the customer gets back to your site."
+---
+
+Every order you create comes with two handles:
+
+```json
+{
+  "deep_link": "https://pay.taprail.app/pay?o=<order_id>",
+  "qr_payload": "https://pay.taprail.app/pay?o=<order_id>"
+}
+```
+
+How you present them depends on where your customer is.
+
+## Web (recommended): the JS SDK
+
+`Taprail.open(intent)` from [`@taprail/checkout`](/sdk/js) does the right thing per device:
+
+- **Desktop** — opens a 420×620 modal with the order summary and a QR; the customer scans
+  with their phone and approves in the Taprail app. The SDK polls the
+  [public order endpoint](/api-reference/public-order) every 2.5 s and resolves when the
+  order reaches a terminal status.
+- **Mobile** — navigates to the universal link, which opens the Taprail app directly. The
+  page unloads, so the SDK promise never settles — your webhook carries the result.
+
+## Direct deep link
+
+Skip the SDK entirely: put `deep_link` behind your own "Pay with Taprail" button, or render
+`qr_payload` as a QR at a physical counter. Then either poll
+[`GET /v1/merchant/orders/:id/status`](/api-reference/get-order-status) from your server or
+wait for the webhook.
+
+## Browser return URL
+
+Set a **return URL** in the dashboard (**Payments → Webhooks → Browser return URL**) and the
+hosted checkout sends the customer's browser back to your site once the order reaches a
+terminal status, with the order id and status appended as query params:
+
+```text
+https://yourstore.com/checkout/complete?order=<order_id>&status=approved
+```
+
+- Must be `https://`. Leave it blank to keep customers on the Taprail confirmation screen.
+- It's a UX convenience — **never fulfil from query params alone**. Confirm against the
+  webhook or `GET /v1/merchant/orders/:id`.
+
+## Order lifecycle
+
+```text
+created ──▶ awaiting_user ──▶ approved ──▶ refunded
+   │             │                │
+   │             ├──▶ declined    └─ (terminal)
+   │             │
+   └────┬────────┴──▶ expired / cancelled
+        ▼
+   (terminal)
+```
+
+| Status | Meaning |
+|---|---|
+| `created` | Order exists; the customer hasn't opened it yet |
+| `awaiting_user` | Opened in the app, not yet authorized |
+| `approved` | Authorized and charged — fulfil on this (via webhook) |
+| `declined` | Charge failed or the customer declined (`decline_reason` says why) |
+| `expired` | Not completed within the 30-minute window |
+| `cancelled` | You cancelled it before payment |
+| `refunded` | You refunded an approved order |
+
+`approved`, `declined`, `expired`, `cancelled`, and `refunded` are terminal.
+
+<Note>
+  Orders expire **30 minutes** after creation if unpaid. Expiry produces an `order.expired`
+  webhook, so abandoned carts clean themselves up.
+</Note>
