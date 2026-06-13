@@ -1,13 +1,14 @@
 ---
 title: "JS SDK"
-description: "@taprail/checkout is a ~1.8 KB drop-in checkout with React bindings."
+description: "@taprail/checkout is a ~5 KB drop-in, themeable checkout with React bindings."
 ---
 
 ```bash
 npm install @taprail/checkout
 ```
 
-Zero runtime dependencies, ESM/CJS/UMD builds, optional React bindings (React ≥ 18).
+Zero runtime dependencies, ESM/CJS/UMD builds, optional React bindings (React ≥ 18), and a
+[themeable](#theming) modal.
 
 ## Open a checkout
 
@@ -60,6 +61,43 @@ What happens per device:
   your server. On mobile the customer can always close the app without returning, so treat a
   resolved promise as a hint, never as settlement.
 </Warning>
+
+## Theming
+
+The modal chrome — backdrop, panel, the mobile waiting card, and buttons — follows a theme.
+Set a default for every checkout with `init`, or pass one per call to `open`:
+
+```javascript
+import { init, open } from "@taprail/checkout";
+
+// App-wide default (mode defaults to "auto" — follows the OS)
+init({ theme: { accent: "#2f6df6" } }); // "auto" (default) | "light" | "dark"
+
+// Or per checkout, with your brand
+await open(intent, {
+  theme: {
+    mode: "light",
+    accent: "#2f6df6",   // the "Open Taprail" button + focus rings
+    accentText: "#ffffff",
+    radius: 16,          // modal corner radius, px
+  },
+});
+```
+
+Every field is optional and falls back to the monochrome default for the resolved `mode`:
+
+| Field | Colors |
+|---|---|
+| `mode` | `auto` (default — follows the OS), `light`, or `dark` |
+| `accent` / `accentText` | The primary button and focus rings |
+| `surface` | The modal / card background |
+| `text` / `muted` | Primary and secondary text |
+| `backdrop` | The scrim behind the modal (include your own alpha) |
+| `radius` | Modal corner radius, in px |
+| `fontFamily` | Font for the chrome |
+
+The modal animates in, respects `prefers-reduced-motion`, and traps focus. Give colors as hex.
+In React, pass `theme` to `<TaprailButton theme={…} />` or as an option to `useTaprailCheckout().open`.
 
 ## One-shot status check
 

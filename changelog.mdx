@@ -3,6 +3,18 @@ title: "Changelog"
 description: "Every observable change to the API, newest first."
 ---
 
+<Update label="June 2026" description="Themeable checkout (SDK 0.2.2)">
+
+**JS SDK 0.2.2 — themeable, refreshed checkout.** The modal got a visual refresh — it animates
+in, shows a Taprail wordmark and a loader while the embed comes up, and the mobile waiting card
+now shows the amount + merchant and resolves the moment the shopper returns from the app. It's
+also **themeable**: pass a `theme` to `init()` (a default for every checkout) or to `open()`
+per call — `mode` (`auto` default / `light` / `dark`), `accent`, `surface`, `text`, `muted`,
+`backdrop`, `radius`, and `fontFamily`. Defaults stay monochrome; `auto` follows the OS, and the
+modal respects `prefers-reduced-motion`. See the [JS SDK theming](/sdk/js#theming) section.
+
+</Update>
+
 <Update label="June 2026" description="Mobile checkout resolves (SDK 0.2.1), payment-recovery states">
 
 **JS SDK 0.2.1 — mobile checkout resolves.** `open()` on mobile used to send the customer
