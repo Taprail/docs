@@ -94,8 +94,10 @@ export function PayButton({ cartId, items }: { cartId: string; items: CartItem[]
 }
 ```
 
-On desktop this opens a modal with a QR. On mobile it sends the customer into the Taprail
-app, which means the promise never resolves there. Don't build fulfilment on top of it.
+On desktop this opens a modal with a QR; on mobile it opens the Taprail app directly and
+resolves once the customer approves and comes back. Either way the redirect above is
+optimistic UX — the webhook in step 3 is what actually marks the order paid, so don't build
+fulfilment on the promise alone.
 
 ## 3. The webhook route
 

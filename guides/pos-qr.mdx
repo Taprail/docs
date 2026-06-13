@@ -52,6 +52,10 @@ creation, though at a counter you'll usually give up well before that.
 A till is a trusted server environment, so poll the lean status endpoint directly:
 
 ```javascript
+// Keep waiting while the order is non-terminal. payment_unconfirmed and refunding
+// are transient — Taprail resolves them — so don't mistake them for a final result.
+const PENDING = new Set(["created", "awaiting_user", "payment_unconfirmed", "refunding"]);
+
 async function waitForPayment(orderId, { timeoutMs = 120_000 } = {}) {
   const started = Date.now();
   while (Date.now() - started < timeoutMs) {
@@ -60,7 +64,7 @@ async function waitForPayment(orderId, { timeoutMs = 120_000 } = {}) {
       { headers: { Authorization: `Bearer ${process.env.TAPRAIL_SECRET_KEY}` } }
     );
     const { status, transaction_reference } = await res.json();
-    if (status !== "created" && status !== "awaiting_user") {
+    if (!PENDING.has(status)) {
       return { status, transaction_reference };
     }
     await new Promise((r) => setTimeout(r, 2000));
@@ -69,8 +73,8 @@ async function waitForPayment(orderId, { timeoutMs = 120_000 } = {}) {
 }
 ```
 
-Poll every couple of seconds. The moment status leaves `created`/`awaiting_user` you have
-your answer.
+Poll every couple of seconds. The moment status reaches a terminal value you have your
+answer; transient states like `payment_unconfirmed` just mean "keep waiting".
 
 | Result | Till behaviour |
 |---|---|

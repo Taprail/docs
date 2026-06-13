@@ -22,8 +22,10 @@ How you present them depends on where your customer is.
   with their phone and approves in the Taprail app. The SDK polls the
   [public order endpoint](/api-reference/public-order) every 2.5 s and resolves when the
   order reaches a terminal status.
-- **Mobile**: navigates to the universal link, which opens the Taprail app directly. The
-  page unloads, so the SDK promise never settles. Your webhook carries the result.
+- **Mobile**: opens the Taprail app directly and shows a small waiting overlay on your page.
+  The customer approves in the app and switches back; the SDK polls the
+  [public order endpoint](/api-reference/public-order) and resolves on a terminal status,
+  the same as desktop. Your webhook is still the authoritative result.
 
 ## Direct deep link
 
@@ -49,26 +51,32 @@ https://yourstore.com/checkout/complete?order=<order_id>&status=approved
 ## Order lifecycle
 
 ```text
-created ──▶ awaiting_user ──▶ approved ──▶ refunded
-   │             │                │
-   │             ├──▶ declined    └─ (terminal)
+created ──▶ awaiting_user ──┬──▶ approved ──▶ refunding ──▶ refunded
+   │             │          │
+   │             │          ├──▶ payment_unconfirmed ──▶ approved / declined
+   │             │          │
+   │             │          └──▶ declined
    │             │
-   └────┬────────┴──▶ expired / cancelled
-        ▼
-   (terminal)
+   └─────┬───────┴──▶ expired / cancelled
+         ▼
+   (terminal: approved · declined · expired · cancelled · refunded)
 ```
 
-| Status | Meaning |
-|---|---|
-| `created` | Order exists; the customer hasn't opened it yet |
-| `awaiting_user` | Opened in the app, not yet authorized |
-| `approved` | Authorized and charged. Fulfil on this, via the webhook |
-| `declined` | Charge failed or the customer declined (`decline_reason` says why) |
-| `expired` | Not completed within the 30-minute window |
-| `cancelled` | You cancelled it before payment |
-| `refunded` | You refunded an approved order |
+| Status | Terminal | Meaning |
+|---|---|---|
+| `created` | | Order exists; the customer hasn't opened it yet |
+| `awaiting_user` | | Opened in the app, not yet authorized |
+| `payment_unconfirmed` | | The charge happened but its confirmation was lost in transit. Taprail re-verifies and moves it to `approved` or `declined`. **Don't treat this as a failure** — a real charge is never auto-declined |
+| `approved` | ✓ | Authorized and charged. Fulfil on this, via the webhook |
+| `refunding` | | A refund is in flight. Settles to `refunded` |
+| `refunded` | ✓ | You refunded an approved order |
+| `declined` | ✓ | Charge failed or the customer declined (`decline_reason` says why) |
+| `expired` | ✓ | Not completed within the 30-minute window |
+| `cancelled` | ✓ | You cancelled it before payment |
 
-`approved`, `declined`, `expired`, `cancelled`, and `refunded` are terminal.
+`payment_unconfirmed` and `refunding` are transient: they resolve to a terminal status on
+their own, usually within a minute. Build your client to wait them out rather than surfacing
+them to the customer as an outcome.
 
 <Note>
   Orders expire **30 minutes** after creation if unpaid. Expiry produces an `order.expired`

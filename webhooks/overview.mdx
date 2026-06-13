@@ -24,9 +24,14 @@ The endpoint must be `https://`.
 ```http
 POST https://api.yourstore.com/taprail/webhook
 Content-Type: application/json
+User-Agent: Taprail-Webhooks/1.0 (+https://taprail.app/docs/webhooks)
 Taprail-Event: order.approved
 Taprail-Signature: t=1700000000,v1=6c2e0f…
 ```
+
+Deliveries arrive with the `User-Agent` above. If a WAF or bot filter (Cloudflare and
+friends often challenge unknown agents from datacenter IPs) sits in front of your endpoint,
+allowlist it so legitimate events aren't blocked.
 
 ```json
 {

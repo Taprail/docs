@@ -32,8 +32,8 @@ timestamp tolerance.
 ## What we expose, and what we don't
 
 - The [public order endpoint](/api-reference/public-order) is unauthenticated by design.
-  It returns display-safe fields only: business name, amount, status. Never the customer's
-  phone, email, or cart.
+  It returns display-safe fields only — business name, amount, status, expiry, and your own
+  return URL — never the customer's phone, email, or cart.
 - Order ids are random UUIDs. They're capabilities for viewing checkout state, so don't
   log them in public places or put them in URLs you share.
 - Card details never touch your systems or ours in plaintext; charges run inside the

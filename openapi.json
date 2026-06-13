@@ -46,8 +46,8 @@
       },
       "OrderStatus": {
         "type": "string",
-        "enum": ["created", "awaiting_user", "approved", "declined", "expired", "cancelled", "refunded"],
-        "description": "approved, declined, expired, cancelled and refunded are terminal."
+        "enum": ["created", "awaiting_user", "payment_unconfirmed", "approved", "refunding", "refunded", "declined", "expired", "cancelled"],
+        "description": "approved, refunded, declined, expired and cancelled are terminal. payment_unconfirmed (a charge whose confirmation was lost — re-verified, never auto-declined) and refunding (a refund in flight) are transient and resolve on their own; don't treat them as failures."
       },
       "PayoutState": {
         "type": "string",
@@ -354,18 +354,31 @@
       "post": {
         "operationId": "refundOrder",
         "summary": "Refund order",
-        "description": "Refunds an approved order. The customer gets back the full amount they paid; the Taprail fee is non-refundable, so the refund cost comes out of your settled funds. Moves the order to refunded (terminal) and delivers an order.refunded webhook.",
+        "description": "Refunds an approved order. The customer gets back the full amount they paid; the Taprail fee is non-refundable, so the refund cost comes out of your settled funds. The order.refunded webhook fires once the refund completes. Idempotent: a second refund of the same order is a no-op.",
         "parameters": [
           { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
         ],
         "responses": {
           "200": {
-            "description": "Refunded.",
+            "description": "The refund completed (status \"refunded\") or is in flight (status \"processing\"). When processing, the order is in the refunding state; Taprail finishes it automatically and the order.refunded webhook fires when it lands. No money is lost in either case.",
             "content": {
               "application/json": {
-                "example": {
-                  "status": "refunded",
-                  "refund_reference": "sandbox_refund_550e8400-e29b-41d4-a716-446655440000"
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": { "type": "string", "enum": ["refunded", "processing"] },
+                    "refund_reference": { "type": "string", "description": "Present when status is refunded." }
+                  }
+                },
+                "examples": {
+                  "refunded": {
+                    "summary": "Refund completed",
+                    "value": { "status": "refunded", "refund_reference": "sandbox_refund_550e8400-e29b-41d4-a716-446655440000" }
+                  },
+                  "processing": {
+                    "summary": "Refund in flight",
+                    "value": { "status": "processing" }
+                  }
                 }
               }
             }
@@ -381,16 +394,7 @@
           },
           "401": { "$ref": "#/components/responses/Unauthorized" },
           "404": { "$ref": "#/components/responses/NotFound" },
-          "429": { "$ref": "#/components/responses/TooManyRequests" },
-          "502": {
-            "description": "The payment processor failed mid-call. Safe to retry.",
-            "content": {
-              "application/json": {
-                "schema": { "$ref": "#/components/schemas/Error" },
-                "example": { "error": "upstream_error", "message": "refund failed: ..." }
-              }
-            }
-          }
+          "429": { "$ref": "#/components/responses/TooManyRequests" }
         }
       }
     },

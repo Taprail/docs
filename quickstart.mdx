@@ -107,8 +107,9 @@ webhook land. No money moves in sandbox.
 </Steps>
 
 <Warning>
-  Treat the webhook, not the browser, as the source of truth for fulfilment. On mobile the
-  page navigates away into the app, so the SDK promise may never settle.
+  Treat the webhook, not the browser, as the source of truth for fulfilment. The SDK promise
+  resolves on both desktop and mobile, but a customer can always close the tab or the app
+  before it does — so use the result for UX and let the signed webhook mark the order paid.
 </Warning>
 
 ## Next

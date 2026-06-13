@@ -44,12 +44,21 @@ What happens per device:
 - **Desktop** → modal (iframe) with the order summary + QR. The SDK polls the public order
   endpoint every 2.5 s and resolves on a terminal status, or `{ status: "closed" }` if the
   customer dismisses it.
-- **Mobile** → the page navigates to the universal link and opens the Taprail app. The
-  promise never settles. Rely on your [webhook](/webhooks/overview).
+- **Mobile** → opens the Taprail app directly (no intermediate page) and shows a small
+  waiting overlay on your page. The customer approves in the app, switches back, and the
+  promise resolves with the terminal result — the same shape you get on desktop. The overlay
+  has an "Open Taprail" button as a fallback if the app didn't come forward.
+
+<Note>
+  `open()` must be called inside the customer's tap or click. On mobile the SDK launches the
+  app from that gesture; browsers ignore app launches that aren't user-initiated.
+</Note>
 
 <Warning>
   The SDK result is for UX (spinners, confirmation screens). Fulfil orders from the signed
-  webhook, or by confirming with `GET /v1/merchant/orders/:id` from your server.
+  [webhook](/webhooks/overview), or by confirming with `GET /v1/merchant/orders/:id` from
+  your server. On mobile the customer can always close the app without returning, so treat a
+  resolved promise as a hint, never as settlement.
 </Warning>
 
 ## One-shot status check

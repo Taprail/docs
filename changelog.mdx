@@ -3,6 +3,27 @@ title: "Changelog"
 description: "Every observable change to the API, newest first."
 ---
 
+<Update label="June 2026" description="Mobile checkout resolves (SDK 0.2.1), payment-recovery states">
+
+**JS SDK 0.2.1 — mobile checkout resolves.** `open()` on mobile used to send the customer
+to an intermediate web page, and the promise never settled there. It now opens the Taprail
+app directly from the tap gesture and shows a small waiting overlay on your page while it
+polls. The promise resolves with the terminal result on mobile just like on desktop, so you
+can route to a receipt after a mobile approval. The webhook stays the source of truth.
+
+**Payment-recovery states are now observable.** Two non-terminal statuses can appear on
+order reads. `payment_unconfirmed` parks a charge whose confirmation was lost in transit;
+Taprail re-verifies it and either promotes it to `approved` or `declined` — a real charge is
+never auto-declined. `refunding` marks a refund that's in flight. Don't treat either as a
+failure; wait for a terminal status. See [the order lifecycle](/checkout-flows#order-lifecycle).
+
+**Asynchronous refunds.** [Refund](/api-reference/refund-order) can return
+`{ "status": "processing" }` when the processor call is deferred. The refund completes on its
+own and the `order.refunded` webhook fires when it does. Refunds stay idempotent: a second
+refund of the same order is a no-op.
+
+</Update>
+
 <Update label="June 2026" description="Rate limits, granular errors, return URL, SDK 0.2.0">
 
 **JS SDK 0.2.0.** `CheckoutResult` gained `return_url`, and `open()` gained an opt-in

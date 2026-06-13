@@ -4,5 +4,12 @@ openapi: "openapi.json POST /v1/merchant/orders/{id}/refund"
 ---
 
 <Note>
+  Most refunds return `status: "refunded"` immediately. If the processor call is deferred you
+  get `status: "processing"` instead — the order sits in `refunding`, Taprail completes it
+  automatically, and the `order.refunded` webhook fires when it lands. Either way, don't
+  re-issue the refund; it's idempotent, and a second call is a no-op.
+</Note>
+
+<Note>
   The customer is emailed a refund confirmation when we have their email on the order.
 </Note>

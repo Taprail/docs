@@ -58,7 +58,6 @@ Every error is JSON with the same shape:
 | 400 | `order_not_cancellable` | Cancel | The order is already paid, declined, expired, or refunded |
 | 400 | `fulfilment_status_invalid` | Push fulfilment | `status` must be `shipped`, `delivered`, or `note` |
 | 404 | `not_found` | Any `/orders/:id` | The order doesn't exist, or belongs to another merchant or the other environment |
-| 502 | `upstream_error` | Refund | The payment processor failed mid-call. Safe to retry |
 
 ### General
 
@@ -71,10 +70,10 @@ Every error is JSON with the same shape:
 ## Retry guidance
 
 <Steps>
-  <Step title="Network errors, 429, 502, 503: retry">
+  <Step title="Network errors, 429, 503, 500: retry">
     Use exponential backoff with jitter. Order creation is always safe to retry with the
     same `Idempotency-Key`: you get the original response back, never a duplicate charge or
-    order.
+    order. Refunds are idempotent too, so a retried refund never moves money twice.
   </Step>
   <Step title="409 duplicate_reference: fetch, don't retry">
     The order already exists. Look it up with `GET /v1/merchant/orders/:id` instead of
