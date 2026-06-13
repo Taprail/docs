@@ -1,11 +1,12 @@
 ---
 title: "Rate limits"
-description: "300 requests per minute per merchant, counted across all endpoints."
+description: "300 requests per minute per merchant by default, raisable on request."
 ---
 
-Each merchant gets **300 requests per minute** across all `/v1/merchant/*` endpoints
-combined, in both environments. The window is a fixed minute; the counter resets on the
-minute boundary.
+Each merchant gets **300 requests per minute by default** across all `/v1/merchant/*`
+endpoints combined, in both environments. The window is a fixed minute; the counter resets on
+the minute boundary. If your limit has been raised (see [below](#requesting-a-higher-limit)),
+that higher number applies instead.
 
 Exceeding it returns:
 
@@ -16,7 +17,7 @@ Exceeding it returns:
 }
 ```
 
-with HTTP status `429`.
+with HTTP status `429`. The number in the message reflects your current limit.
 
 ## Staying under it
 
@@ -37,7 +38,16 @@ Back off exponentially with jitter and retry. For order creation, keep the same
 The public checkout endpoint (`/v1/checkout/orders/:id`) is not counted against your
 merchant limit; it's what the SDK polls from customers' browsers.
 
+## Requesting a higher limit
+
+If your traffic has genuinely outgrown 300/minute, request an increase from the dashboard
+under **Developer → Rate limits**. The page shows your current ceiling and a short form:
+enter the sustained requests per minute you need and a sentence on your use case. Taprail
+reviews it, and once granted the new limit takes effect immediately — no key change or
+redeploy.
+
 <Note>
-  Need more headroom for a legitimate use case? Contact support with your expected volume
-  and we'll raise your limit.
+  You can have one open request at a time, and the page shows its status while it's under
+  review. Before requesting more, confirm you're [preferring webhooks to polling](#staying-under-it)
+  — that alone resolves most limits.
 </Note>
