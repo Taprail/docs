@@ -65,10 +65,11 @@ We retry on this schedule, then give up:
 1s → 5s → 25s → 2m → 10m → 1h → failed
 ```
 
-The dashboard shows every attempt under **Payments → Webhooks → Deliveries**, including the
-HTTP status your endpoint returned. Anything in a `failed` state has a **Redeliver** button
-that re-queues it immediately. After an outage on your side, redeliver the failures in
-order, oldest first.
+The dashboard shows every attempt under the **Deliveries** tab in **Developer → Webhooks**,
+including the HTTP status your endpoint returned. Open any attempt to see the request and
+response headers and bodies; anything in a `failed` state has a **Redeliver** button that
+re-queues it immediately. After an outage on your side, redeliver the failures in order,
+oldest first.
 
 ## Monitor the boring way
 

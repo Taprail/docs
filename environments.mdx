@@ -10,7 +10,7 @@ Taprail has two environments sharing one base URL. Your API key decides which on
 | Charges | Simulated, no money moves | Real cards, real money |
 | Outcome | Deterministic, by amount (below) | The customer's real authorization |
 | Payouts | Marked transferred, no actual transfer | Net settled to your payout account |
-| Availability | From signup | After Taprail review |
+| Availability | From signup | After the partner agreement is signed |
 
 Orders, webhooks, keys, and dashboard views are all environment-scoped: a sandbox key only
 ever sees sandbox orders.
@@ -34,30 +34,51 @@ every path in CI without an app in the loop:
 
 ## Going live
 
-Work through the go-live checklist on the dashboard's **Payments** page:
+Live mode unlocks when you and Taprail have signed the partner agreement. The whole flow
+lives in the dashboard under **Account → Go live**, which tracks it as a stepper alongside a
+short prerequisite checklist.
+
+**Get these done first** (the checklist on the same page links to each):
 
 <Steps>
   <Step title="Verify your email">
-    Live mode is gated on a verified address.
+    Confirm the address you signed up with — live mode is tied to a contactable human.
   </Step>
   <Step title="Build and test in sandbox">
-    Mint a sandbox key, integrate order creation + checkout, and exercise the decline and
-    expiry paths with test amounts.
+    Mint a sandbox key under **Developer → API Keys**, integrate order creation + checkout,
+    and exercise the decline and expiry paths with [test amounts](#deterministic-test-amounts).
   </Step>
   <Step title="Set your webhook endpoint">
-    Configure the endpoint and store both signing secrets. Confirm you verify signatures.
+    Configure the endpoint and signing secrets under **Developer → Webhooks**, and confirm
+    you [verify signatures](/webhooks/verify-signatures).
   </Step>
-  <Step title="Add a payout account">
-    Under **Payments → Settings**, pick your bank and verify the account. Your net
-    (amount minus the Taprail fee) settles there.
+  <Step title="Add a settlement account">
+    Under **Account → Settings**, pick your bank and verify the account. Your net (amount
+    minus the Taprail fee) settles there.
   </Step>
-  <Step title="Taprail enables live mode">
-    Once review completes, mint a `tr_live_` key and switch your server's secret.
+</Steps>
+
+**Then sign the agreement** (the **Account → Go live** stepper):
+
+<Steps>
+  <Step title="Business details">
+    Fill in your business profile and the name of the person signing.
+  </Step>
+  <Step title="Sign the agreement">
+    Review the Taprail Partner agreement and sign it electronically with your legal name.
+  </Step>
+  <Step title="Taprail counter-signs">
+    Once you've signed, Taprail counter-signs to execute the agreement.
+  </Step>
+  <Step title="Live mode switches on">
+    With the agreement executed, live mode turns on and we email you. Flip the topbar toggle
+    to **Live**, mint a `tr_live_` key under **Developer → API Keys**, and switch your
+    server's secret.
   </Step>
 </Steps>
 
 <Note>
-  Fees: your per-order fee is a percentage of the amount with a cap, both shown on
-  **Payments → Settings**. The fee is computed when the order is created and is
+  Fees: your per-order fee is a percentage of the amount with a cap, both shown under
+  **Account → Settings**. The fee is computed when the order is created and is
   non-refundable; refunds return the full amount to the customer.
 </Note>

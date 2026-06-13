@@ -13,7 +13,7 @@ Taprail-Signature: t=1700000000,v1=6c2e0f6a4d…
 - `v1`: lowercase hex `HMAC-SHA256` of the string `"<t>.<raw_request_body>"`, keyed with
   your **signing secret** for the event's environment (`whsec_test_…` or `whsec_live_…`)
 
-Secrets are generated under **Payments → Webhooks** and shown once. Each environment has its
+Secrets are generated under **Developer → Webhooks** and shown once. Each environment has its
 own secret, so a leaked sandbox secret can't forge live events.
 
 ## Verification steps

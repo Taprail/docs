@@ -24,12 +24,13 @@ way to override the environment in a request. A sandbox key can never create a l
 ## Managing keys
 
 Keys are minted from the [partner dashboard](https://partner.taprail.app) under
-**Payments → API Keys**:
+**Developer → API Keys**. The **Sandbox** and **Live** tabs each mint keys for their own
+environment; live keys stay locked until live mode is enabled.
 
 - The full key is shown **once** at mint time; only a hash is stored. If you lose it, mint a
   new one.
-- **Rotation with grace**: rotating mints a new key and schedules existing keys to expire
-  after 24 hours, so you can deploy the new key without downtime.
+- **Rotation with grace**: **Rotate (24h grace)** mints a new key and schedules existing keys
+  to expire after 24 hours, so you can deploy the new key without downtime.
 - **Revocation** is immediate: any integration using a revoked key starts receiving `401`s.
 
 <Warning>

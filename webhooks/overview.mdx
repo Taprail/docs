@@ -7,7 +7,7 @@ Taprail POSTs a signed JSON event to your endpoint whenever an order changes sta
 webhooks as the authoritative record of payment outcomes; anything that happens in the
 customer's browser is best-effort by comparison.
 
-Configure your endpoint and signing secrets in the dashboard under **Payments → Webhooks**.
+Configure your endpoint and signing secrets in the dashboard under **Developer → Webhooks**.
 The endpoint must be `https://`.
 
 ## Events
@@ -88,8 +88,9 @@ backoff:
 1s → 5s → 25s → 2m → 10m → 1h → marked failed
 ```
 
-You can inspect every delivery attempt, and redeliver manually, from
-**Payments → Webhooks → Deliveries** in the dashboard.
+You can inspect every delivery attempt — request and response headers and bodies — and
+redeliver a failed one, from the **Deliveries** tab under **Developer → Webhooks** in the
+dashboard. The same page has a **Test your endpoint** panel that sends a `test.ping` event.
 
 <Note>
   Deliveries can occasionally arrive more than once, for example when your 2xx response is

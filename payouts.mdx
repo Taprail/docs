@@ -30,7 +30,7 @@ A worker sweeps pending payouts about once a minute, so `pending` normally lasts
 Two cases worth knowing:
 
 - **No payout account configured.** Orders stay `pending` until you add and verify a bank
-  account under **Payments → Settings**. Nothing is lost; transfers resume automatically
+  account under **Account → Settings**. Nothing is lost; transfers resume automatically
   once the account is in place.
 - **Zero net.** If the fee consumes the full amount (tiny orders), the order is marked
   `transferred` with nothing to send.
@@ -64,7 +64,7 @@ charge time. The refund is recovered from your settled funds. Practically: a ref
 
 ## Fees
 
-Your fee is a percentage with a cap, both visible under **Payments → Settings** in the
-dashboard. The fee is computed once, at order creation, so the `fee_kobo` you see in the
-create response is exactly what settlement uses. Changing your fee schedule later never
+Your fee is a percentage with a cap, both visible under **Account → Settings → Fee schedule**
+in the dashboard. The fee is computed once, at order creation, so the `fee_kobo` you see in
+the create response is exactly what settlement uses. Changing your fee schedule later never
 reprices existing orders.

@@ -8,8 +8,10 @@ webhook land. No money moves in sandbox.
 
 <Steps>
   <Step title="Get a sandbox API key">
-    Sign up at the [partner dashboard](https://partner.taprail.app/signup), then go to
-    **Payments → API Keys** and mint a sandbox key. It's shown once, so copy it.
+    [Sign up](https://partner.taprail.app/signup) and pick **Pay with Taprail** (or **Both**).
+    No key is minted for you — go to **Developer → API Keys**, make sure you're on the
+    **Sandbox** tab, and click **New sandbox key**. It's shown once, so copy it. Sandbox keys
+    work immediately, with no review.
 
     ```text
     tr_test_a1b2c3d4e5f6789012345678901234ab
@@ -84,7 +86,7 @@ webhook land. No money moves in sandbox.
   </Step>
 
   <Step title="Receive the webhook">
-    Set your endpoint under **Payments → Webhooks** in the dashboard. Within seconds of
+    Set your endpoint under **Developer → Webhooks** in the dashboard. Within seconds of
     approval you'll receive a signed event:
 
     ```json
